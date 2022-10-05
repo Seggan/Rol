@@ -12,6 +12,7 @@ statement
     : assignment
     | declaration
     | expression
+    | control
     ;
 
 declaration
@@ -22,7 +23,7 @@ declaration
     ;
 
 varDeclaration
-    : CONST? NL* VAR NL* identifier (COLON NL* type)? NL* (assignmentOp NL* expression)?
+    : CONST? NL* VAR NL* identifier (COLON NL* type)? NL* (ASSIGN NL* expression)?
     ;
 
 assignment
@@ -43,7 +44,7 @@ argList
     ;
 
 arg
-    : Identifier COLON NL* type
+    : identifier COLON NL* type
     ;
 
 structDeclaration
@@ -59,67 +60,30 @@ externDeclaration
     ;
 
 noTypeArgList
-    : LPAREN NL* (Identifier (NL* COMMA NL* Identifier)*)? NL* RPAREN
+    : LPAREN NL* (identifier (NL* COMMA NL* identifier)*)? NL* RPAREN
     ;
 
-expression: or;
-
-or
-    : and (NL* OR NL* and)*
-    ;
-
-and
-    : bitOr (NL* AND NL* bitOr)*
-    ;
-
-bitOr
-    : bitXor (NL* PIPE NL* bitXor)*
-    ;
-
-bitXor
-    : bitAnd (NL* CARET NL* bitAnd)*
-    ;
-
-bitAnd
-    : equality (NL* AMP NL* equality)*
-    ;
-
-equality
-    : comparison ((EQUAL | NOT_EQUAL) NL* comparison)*
-    ;
-
-comparison
-    : bitShift ((LT | GT | LT_EQUAL | GT_EQUAL) NL* bitShift)*
-    ;
-
-bitShift
-    : addition ((SHL | SHR) NL* addition)*
-    ;
-
-addition
-    : multiplication ((PLUS | MINUS) NL* multiplication)*
-    ;
-
-multiplication
-    : prefix ((STAR | SLASH | MOD) NL* prefix)*
-    ;
-
-prefix
-    : (NOT | TILDE | MINUS | PLUS | INC | DEC)* postfix
-    ;
-
-postfix
-    : access (INC | DEC)*
-    ;
-
-access
-    : primary (DOT NL* primary)*
+expression
+    : primary
+    | expression NL* DOT NL* (call | identifier)
+    | expression NL* postfixOp=(INC | DEC)
+    | prefixOp=(NOT | TILDE | MINUS | INC | DEC) NL* expression
+    | expression NL* op=(STAR | SLASH | MOD) NL* expression
+    | expression NL* op=(PLUS | MINUS) NL* expression
+    | expression NL* op=(SHL | SHR) NL* expression
+    | expression NL* op=(LT | GT | LT_EQUAL | GT_EQUAL) NL* expression
+    | expression NL* op=(EQUAL | NOT_EQUAL) NL* expression
+    | expression NL* op=AMP NL* expression
+    | expression NL* op=CARET NL* expression
+    | expression NL* op=PIPE NL* expression
+    | expression NL* op=AND NL* expression
+    | expression NL* op=OR NL* expression
     ;
 
 primary
     : LPAREN NL* expression NL* RPAREN
     | call
-    | Number
+    | number
     | String
     | Boolean
     | Null
@@ -130,12 +94,54 @@ call
     : identifier NL* LPAREN NL* (expression (NL* COMMA NL* expression)*)? NL* RPAREN
     ;
 
+number
+    : Number | HexNumber | BinNumber | OctNumber
+    ;
+
+control
+    : ifStatement
+    | matchStatement
+    | whileStatement
+    | forStatement
+    | foreachStatement
+    | returnStatement
+    | block
+    ;
+
+ifStatement
+    : IF NL* LPAREN NL* expression NL* RPAREN NL* block (NL* ELSE NL* block)?
+    ;
+
+matchStatement
+    : MATCH NL* LPAREN NL* expression NL* RPAREN NL* LBRACE NL* (matchCase NL*)* RBRACE
+    ;
+
+matchCase
+    : expression (NL* COMMA NL* expression)* NL* COLON NL* (block | expression)
+    ;
+
+whileStatement
+    : WHILE NL* LPAREN NL* expression NL* RPAREN NL* block
+    ;
+
+forStatement
+    : FOR NL* LPAREN NL* (varDeclaration)? NL* SEMICOLON NL* expression? NL* SEMICOLON NL* (assignment)? NL* RPAREN NL* block
+    ;
+
+foreachStatement
+    : FOR NL* LPAREN NL* VAR NL* identifier NL* IN NL* expression NL* RPAREN NL* block
+    ;
+
+returnStatement
+    : RETURN NL* expression?
+    ;
+
 block
     : LBRACE statements RBRACE
     ;
 
 type
-    : (Identifier QUESTION?) | DYN
+    : (identifier QUESTION?) | DYN
     ;
 
 // identifier and soft keywords

@@ -23,6 +23,7 @@ CONST: 'const';
 IF: 'if';
 ELSE: 'else';
 IS: 'is';
+MATCH: 'match';
 
 WHILE: 'while';
 FOR: 'for';
@@ -91,7 +92,19 @@ INC: '++';
 DEC: '--';
 
 Number
-    : [0-9]+ ('.' [0-9]+)?
+    : [0-9_]+ ('.' [0-9_]+)?
+    ;
+
+HexNumber
+    : '0x' [0-9a-fA-F_]+
+    ;
+
+BinNumber
+    : '0b' [01_]+
+    ;
+
+OctNumber
+    : '0o' [0-7_]+
     ;
 
 String

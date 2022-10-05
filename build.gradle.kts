@@ -29,6 +29,14 @@ tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "11"
 }
 
+tasks.compileJava {
+    dependsOn(tasks.generateGrammarSource)
+}
+
+tasks.compileKotlin {
+    dependsOn(tasks.generateGrammarSource)
+}
+
 tasks.generateGrammarSource {
     maxHeapSize = "128m"
     val path = JPath.of("$buildDir/generated-src/")
