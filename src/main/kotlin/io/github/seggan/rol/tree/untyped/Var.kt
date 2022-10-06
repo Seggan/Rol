@@ -1,14 +1,18 @@
 package io.github.seggan.rol.tree.untyped
 
-sealed class Var(val name: String) : Node(listOf())
+import io.github.seggan.rol.tree.AccessModifier
+import io.github.seggan.rol.tree.Location
 
-class VarDef(name: String, val constant: Boolean, val type: Typename?) : Var(name) {
+sealed class UVar(val name: String, children: List<UNode>, location: Location) : UNode(children, location)
+
+class UVarDef(name: String, val constant: Boolean, val type: UTypename?, val access: AccessModifier, location: Location) :
+    UVar(name, listOf(), location) {
     override fun toString(): String {
-        return "VarDef($name, constant=$constant, type=$type)"
+        return "VarDef($access, $name, constant=$constant, type=$type)"
     }
 }
 
-class VarAssign(name: String, val value: Expression) : Var(name) {
+class UVarAssign(name: String, val value: UExpression, location: Location) : UVar(name, listOf(value), location) {
     override fun toString(): String {
         return "VarAssign($name, $value)"
     }

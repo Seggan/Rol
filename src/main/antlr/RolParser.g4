@@ -23,7 +23,7 @@ declaration
     ;
 
 varDeclaration
-    : CONST? NL* VAR NL* identifier (COLON NL* type)? NL* (ASSIGN NL* expression)?
+    : accessModifier? CONST? NL* VAR NL* identifier (COLON NL* type)? NL* (ASSIGN NL* expression)?
     ;
 
 assignment
@@ -137,7 +137,7 @@ returnStatement
     ;
 
 block
-    : LBRACE statements RBRACE
+    : LBRACE NL* statements NL* RBRACE
     ;
 
 type

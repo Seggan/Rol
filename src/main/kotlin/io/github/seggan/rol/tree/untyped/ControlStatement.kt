@@ -1,9 +1,11 @@
 package io.github.seggan.rol.tree.untyped
 
-sealed class ControlStatement(children: List<Node>) : Node(children)
+import io.github.seggan.rol.tree.Location
 
-class IfStatement(val cond: Expression, val ifTrue: Statements, val ifFalse: Statements? = null) :
-    ControlStatement(listOfNotNull(cond, ifTrue, ifFalse)) {
+sealed class UControlStatement(children: List<UNode>, location: Location) : UNode(children, location)
+
+class UIfStatement(val cond: UExpression, val ifTrue: UStatements, val ifFalse: UStatements? = null, location: Location) :
+    UControlStatement(listOfNotNull(cond, ifTrue, ifFalse), location) {
     override fun toString(): String {
         return if (ifFalse == null) {
             "IfStatement($cond, $ifTrue)"
@@ -13,20 +15,21 @@ class IfStatement(val cond: Expression, val ifTrue: Statements, val ifFalse: Sta
     }
 }
 
-class MatchStatement(val cond: Expression, val cases: List<MatchCase>) :
-    ControlStatement(listOf(cond) + cases) {
+class UMatchStatement(val cond: UExpression, val cases: List<UMatchCase>, location: Location) :
+    UControlStatement(listOf(cond) + cases, location) {
     override fun toString(): String {
         return "MatchStatement($cond, $cases)"
     }
 }
 
-data class MatchCase(val cond: Expression, val body: Node) : Node(listOf(cond, body)) {
+class UMatchCase(val cond: UExpression, val body: UNode, location: Location) : UNode(listOf(cond, body), location) {
     override fun toString(): String {
         return "MatchCase($cond, $body)"
     }
 }
 
-class WhileStatement(val cond: Expression, val body: Statements) : ControlStatement(listOf(cond, body)) {
+class UWhileStatement(val cond: UExpression, val body: UStatements, location: Location) :
+    UControlStatement(listOf(cond, body), location) {
     override fun toString(): String {
         return "WhileStatement($cond, $body)"
     }
@@ -34,14 +37,15 @@ class WhileStatement(val cond: Expression, val body: Statements) : ControlStatem
 
 // TODO: ForStatement
 
-class ForEachStatement(val varName: String, val iterable: Expression, val body: Statements) :
-    ControlStatement(listOf(iterable, body)) {
+class UForEachStatement(val varName: String, val iterable: UExpression, val body: UStatements, location: Location) :
+    UControlStatement(listOf(iterable, body), location) {
     override fun toString(): String {
         return "ForEachStatement($varName, $iterable, $body)"
     }
 }
 
-class ReturnStatement(val value: Expression? = null) : ControlStatement(listOfNotNull(value)) {
+class UReturnStatement(val value: UExpression? = null, location: Location) :
+    UControlStatement(listOfNotNull(value), location) {
     override fun toString(): String {
         return "ReturnStatement($value)"
     }

@@ -3,65 +3,74 @@ package io.github.seggan.rol.parsing
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.antlr.RolParserBaseVisitor
 import io.github.seggan.rol.tree.untyped.Access
+import io.github.seggan.rol.tree.AccessModifier
+import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.location
+import io.github.seggan.rol.tree.untyped.UArgument
 import io.github.seggan.rol.tree.untyped.AssignType
-import io.github.seggan.rol.tree.untyped.BinaryExpression
+import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.BinaryOperator
-import io.github.seggan.rol.tree.untyped.BooleanLiteral
-import io.github.seggan.rol.tree.untyped.Expression
+import io.github.seggan.rol.tree.untyped.UBooleanLiteral
+import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.FunctionCall
-import io.github.seggan.rol.tree.untyped.Node
-import io.github.seggan.rol.tree.untyped.NullLiteral
-import io.github.seggan.rol.tree.untyped.NumberLiteral
-import io.github.seggan.rol.tree.untyped.PostfixExpression
+import io.github.seggan.rol.tree.untyped.UFunctionDeclaration
+import io.github.seggan.rol.tree.untyped.UIfStatement
+import io.github.seggan.rol.tree.untyped.UNode
+import io.github.seggan.rol.tree.untyped.UNullLiteral
+import io.github.seggan.rol.tree.untyped.UNumberLiteral
+import io.github.seggan.rol.tree.untyped.UPostfixExpression
 import io.github.seggan.rol.tree.untyped.PostfixOperator
-import io.github.seggan.rol.tree.untyped.PrefixExpression
+import io.github.seggan.rol.tree.untyped.UPrefixExpression
 import io.github.seggan.rol.tree.untyped.PrefixOperator
-import io.github.seggan.rol.tree.untyped.Statements
-import io.github.seggan.rol.tree.untyped.StringLiteral
-import io.github.seggan.rol.tree.untyped.Typename
-import io.github.seggan.rol.tree.untyped.VarAssign
-import io.github.seggan.rol.tree.untyped.VarDef
+import io.github.seggan.rol.tree.untyped.UStatements
+import io.github.seggan.rol.tree.untyped.UStringLiteral
+import io.github.seggan.rol.tree.untyped.UTypename
+import io.github.seggan.rol.tree.untyped.UVarAssign
+import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.VariableAccess
 import io.github.seggan.rol.tree.untyped.asExpr
 
-class RolVisitor : RolParserBaseVisitor<Node>() {
+class RolVisitor : RolParserBaseVisitor<UNode>() {
 
-    override fun visitFile(ctx: RolParser.FileContext): Node {
-        fun flattenStatements(node: Node): List<Node> =
-            if (node is Statements) node.children.flatMap(::flattenStatements) else listOf(node)
+    override fun visitFile(ctx: RolParser.FileContext): UNode {
+        fun flattenStatements(node: UNode): List<UNode> =
+            if (node is UStatements) node.children.flatMap(::flattenStatements) else listOf(node)
 
-        return Statements(visitChildren(ctx).children.flatMap(::flattenStatements))
+        return UStatements(visitChildren(ctx).children.flatMap(::flattenStatements))
     }
 
-    override fun visitStatements(ctx: RolParser.StatementsContext): Node {
-        return Statements(ctx.statement().map(::visit))
+    override fun visitStatements(ctx: RolParser.StatementsContext): UNode {
+        return UStatements(ctx.statement().map(::visit))
     }
 
-    override fun visitExpression(ctx: RolParser.ExpressionContext): Node {
+    override fun visitExpression(ctx: RolParser.ExpressionContext): UNode {
         return when {
-            ctx.postfixOp != null -> PostfixExpression(
+            ctx.postfixOp != null -> UPostfixExpression(
                 visit(ctx.expression(0)).asExpr(),
-                PostfixOperator.fromSymbol(ctx.postfixOp.text)
+                PostfixOperator.fromSymbol(ctx.postfixOp.text),
+                ctx.location
             )
-            ctx.prefixOp != null -> PrefixExpression(
+            ctx.prefixOp != null -> UPrefixExpression(
                 visit(ctx.expression(0)).asExpr(),
-                PrefixOperator.fromSymbol(ctx.prefixOp.text)
+                PrefixOperator.fromSymbol(ctx.prefixOp.text),
+                ctx.location
             )
-            ctx.op != null -> BinaryExpression(
+            ctx.op != null -> UBinaryExpression(
                 visit(ctx.expression(0)).asExpr(),
                 visit(ctx.expression(1)).asExpr(),
-                BinaryOperator.fromSymbol(ctx.op.text)
+                BinaryOperator.fromSymbol(ctx.op.text),
+                ctx.location
             )
-            ctx.identifier() != null -> Access(visit(ctx.expression(0)).asExpr(), ctx.identifier().text)
+            ctx.identifier() != null -> Access(visit(ctx.expression(0)).asExpr(), ctx.identifier().text, ctx.location)
             ctx.call() != null -> {
                 val call = visit(ctx.call()) as FunctionCall
-                return FunctionCall(call.name, listOf(visit(ctx.expression(0)).asExpr()) + call.args)
+                return FunctionCall(call.name, listOf(visit(ctx.expression(0)).asExpr()) + call.args, call.location)
             }
             else -> visitChildren(ctx)
         }
     }
 
-    override fun visitNumber(ctx: RolParser.NumberContext): Node {
+    override fun visitNumber(ctx: RolParser.NumberContext): UNode {
         val text = ctx.text
         val num = when {
             ctx.Number() != null -> text.toDouble()
@@ -70,63 +79,87 @@ class RolVisitor : RolParserBaseVisitor<Node>() {
             ctx.OctNumber() != null -> text.substring(2).toLong(8).toDouble()
             else -> throw AssertionError() // should never happen
         }
-        return NumberLiteral(num)
+        return UNumberLiteral(num, ctx.location)
     }
 
-    override fun visitPrimary(ctx: RolParser.PrimaryContext): Node {
+    override fun visitPrimary(ctx: RolParser.PrimaryContext): UNode {
         val text = ctx.text
         return when {
-            ctx.Boolean() != null -> BooleanLiteral(text.toBoolean())
-            ctx.String() != null -> StringLiteral(text.substring(1, text.length - 1))
-            ctx.Null() != null -> NullLiteral
-            ctx.identifier() != null -> VariableAccess(text)
+            ctx.Boolean() != null -> UBooleanLiteral(text.toBoolean(), ctx.location)
+            ctx.String() != null -> UStringLiteral(text.substring(1, text.length - 1), ctx.location)
+            ctx.Null() != null -> UNullLiteral(ctx.location)
+            ctx.identifier() != null -> VariableAccess(text, ctx.location)
             else -> visitChildren(ctx)
         }
     }
 
-    override fun visitCall(ctx: RolParser.CallContext): Node {
-        return FunctionCall(ctx.identifier().text, ctx.expression().map(::visit).map { it.asExpr() })
+    override fun visitCall(ctx: RolParser.CallContext): UNode {
+        return FunctionCall(ctx.identifier().text, ctx.expression().map(::visit).map { it.asExpr() }, ctx.location)
     }
 
-    override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): Node {
+    override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): UNode {
         val name = ctx.identifier().text
-        val def = VarDef(
+        val def = UVarDef(
             name,
             ctx.CONST() != null,
-            if (ctx.type() == null) null else Typename.parse(ctx.type().text)
+            if (ctx.type() == null) null else UTypename.parse(ctx.type()),
+            AccessModifier.parse(ctx.accessModifier()),
+            ctx.location
         )
         return if (ctx.expression() == null) {
             def
         } else {
-            Statements(def, VarAssign(name, visit(ctx.expression()).asExpr()))
+            UStatements(def, UVarAssign(name, visit(ctx.expression()).asExpr(), ctx.location))
         }
     }
 
-    override fun visitAssignment(ctx: RolParser.AssignmentContext): Node {
+    override fun visitAssignment(ctx: RolParser.AssignmentContext): UNode {
         val name = ctx.identifier().text
-        return VarAssign(
+        return UVarAssign(
             name,
             convertToNormalAssignment(
                 AssignType.fromSymbol(ctx.assignmentOp().text),
                 name,
                 visit(ctx.expression()).asExpr()
-            )
+            ),
+            ctx.location
         )
     }
 
-    override fun visitIfStatement(ctx: RolParser.IfStatementContext?): Node {
-        return super.visitIfStatement(ctx)
+    override fun visitIfStatement(ctx: RolParser.IfStatementContext): UNode {
+        return UIfStatement(
+            visit(ctx.expression()).asExpr(),
+            visit(ctx.block(0)).asStatements(),
+            if (ctx.block().size > 1) visit(ctx.block(1)).asStatements() else null,
+            ctx.location
+        )
     }
 
-    override fun aggregateResult(aggregate: Node?, nextResult: Node?): Node {
-        return nextResult ?: aggregate ?: NullLiteral
+    // TODO the rest
+
+    override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UNode {
+        return UFunctionDeclaration(
+            ctx.identifier().text,
+            ctx.argList().arg().map { UArgument(it.identifier().text, UTypename.parse(it.type()), it.location) },
+            AccessModifier.parse(ctx.accessModifier()),
+            visit(ctx.block()).asStatements(),
+            ctx.location
+        )
+    }
+
+    override fun aggregateResult(aggregate: UNode?, nextResult: UNode?): UNode {
+        return nextResult ?: aggregate ?: UNullLiteral(Location(0, 0))
     }
 }
 
-private fun convertToNormalAssignment(assign: AssignType, name: String, expr: Expression): Expression {
+private fun convertToNormalAssignment(assign: AssignType, name: String, expr: UExpression): UExpression {
     return if (assign.operation == null) {
         expr
     } else {
-        BinaryExpression(VariableAccess(name), expr, assign.operation)
+        UBinaryExpression(VariableAccess(name, expr.location.copy(text = name)), expr, assign.operation, expr.location)
     }
+}
+
+private fun UNode.asStatements(): UStatements {
+    return if (this is UStatements) this else UStatements(this)
 }

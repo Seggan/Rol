@@ -1,19 +1,21 @@
 package io.github.seggan.rol.tree.untyped
 
-sealed class Literal : Expression(listOf())
+import io.github.seggan.rol.tree.Location
 
-class NumberLiteral(val value: Double) : Literal() {
+sealed class ULiteral(location: Location) : UExpression(listOf(), location)
+
+class UNumberLiteral(val value: Double, location: Location) : ULiteral(location) {
     override fun toString() = value.toString()
 }
 
-class StringLiteral(val value: String) : Literal() {
+class UStringLiteral(val value: String, location: Location) : ULiteral(location) {
     override fun toString() = "\"$value\""
 }
 
-class BooleanLiteral(val value: Boolean) : Literal() {
+class UBooleanLiteral(val value: Boolean, location: Location) : ULiteral(location) {
     override fun toString() = value.toString()
 }
 
-object NullLiteral : Literal() {
+class UNullLiteral(location: Location) : ULiteral(location) {
     override fun toString() = "null (literal)"
 }

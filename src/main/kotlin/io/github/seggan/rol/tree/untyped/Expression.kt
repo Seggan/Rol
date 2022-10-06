@@ -1,24 +1,21 @@
 package io.github.seggan.rol.tree.untyped
 
+import io.github.seggan.rol.tree.Location
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-sealed class Expression(children: List<Node>) : Node(children)
+sealed class UExpression(children: List<UNode>, location: Location) : UNode(children, location)
 
-@OptIn(ExperimentalContracts::class)
-fun Node.asExpr(): Expression {
-    contract {
-        returns() implies (this@asExpr is Expression)
-    }
-    if (this is Expression) {
+fun UNode.asExpr(): UExpression {
+    if (this is UExpression) {
         return this
     } else {
         throw IllegalArgumentException("Node $this is not an expression")
     }
 }
 
-class BinaryExpression(val left: Expression, val right: Expression, val type: BinaryOperator) :
-    Expression(listOf(left, right)) {
+class UBinaryExpression(val left: UExpression, val right: UExpression, val type: BinaryOperator, location: Location) :
+    UExpression(listOf(left, right), location) {
     override fun toString(): String {
         return "BinaryExpression($left $type $right)"
     }
@@ -53,7 +50,8 @@ enum class BinaryOperator(private val symbol: String) {
     }
 }
 
-class PrefixExpression(val expr: Expression, val type: PrefixOperator) : Expression(listOf(expr)) {
+class UPrefixExpression(val expr: UExpression, val type: PrefixOperator, location: Location) :
+    UExpression(listOf(expr), location) {
     override fun toString(): String {
         return "PrefixExpression($type $expr)"
     }
@@ -73,7 +71,8 @@ enum class PrefixOperator(private val symbol: String) {
     }
 }
 
-class PostfixExpression(val expr: Expression, val type: PostfixOperator) : Expression(listOf(expr)) {
+class UPostfixExpression(val expr: UExpression, val type: PostfixOperator, location: Location) :
+    UExpression(listOf(expr), location) {
     override fun toString(): String {
         return "PostfixExpression($expr $type)"
     }
