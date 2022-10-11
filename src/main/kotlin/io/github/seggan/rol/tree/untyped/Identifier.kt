@@ -1,22 +1,24 @@
 package io.github.seggan.rol.tree.untyped
 
 import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.Reference
 
-sealed class Identifier(val name: String, children: List<UNode>, location: Location) : UExpression(children, location)
+sealed class UIdentifier(val name: String, children: List<UNode>, location: Location) : UExpression(children, location)
 
-class VariableAccess(name: String, location: Location) : Identifier(name, emptyList(), location) {
+class UVariableAccess(name: String, location: Location) : UIdentifier(name, emptyList(), location), Reference {
     override fun toString(): String {
         return "VariableAccess($name)"
     }
 }
 
-class FunctionCall(name: String, val args: List<UExpression>, location: Location) : Identifier(name, args, location) {
+class UFunctionCall(name: String, val args: List<UExpression>, location: Location) :
+    UIdentifier(name, args, location), Reference {
     override fun toString(): String {
         return "FunctionCall($name, ${args.joinToString(", ")})"
     }
 }
 
-class Access(val obj: UExpression, name: String, location: Location) : Identifier(name, listOf(obj), location) {
+class UAccess(val obj: UExpression, name: String, location: Location) : UIdentifier(name, listOf(obj), location) {
     override fun toString(): String {
         return "Access($obj, $name)"
     }

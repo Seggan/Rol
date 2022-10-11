@@ -3,7 +3,15 @@ parser grammar RolParser;
 options { tokenVocab = RolLexer; }
 
 file
-    : statements EOF
+    : packageStatement? NL* (IMPORT package NL*)* statements EOF
+    ;
+
+packageStatement
+    : PACKAGE package
+    ;
+
+package
+    : Identifier (DOT Identifier)*
     ;
 
 statements: (statement (NL | SEMICOLON)+)* statement?;

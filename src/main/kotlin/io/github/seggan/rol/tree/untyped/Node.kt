@@ -3,6 +3,8 @@ package io.github.seggan.rol.tree.untyped
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.tree.Location
 import io.github.seggan.rol.tree.location
+import io.github.seggan.rol.tree.typed.Type
+import org.jetbrains.annotations.Contract
 
 sealed class UNode(val children: List<UNode>, val location: Location) {
     override fun toString(): String {
@@ -11,6 +13,10 @@ sealed class UNode(val children: List<UNode>, val location: Location) {
 
     fun flatten(): List<UNode> {
         return listOf(this) + children.flatMap { it.flatten() }
+    }
+
+    open fun shallowFlatten(): List<UNode> {
+        return listOf(this) + children.flatMap { it.shallowFlatten() }
     }
 
     inline fun <reified T> childrenOfType(): List<T> {
@@ -24,15 +30,18 @@ class UStatements(children: List<UNode>) : UNode(children, children.first().loca
 
 class UTypename(val name: String, val isNullable: Boolean = false, location: Location) : UNode(emptyList(), location) {
     companion object {
-        val INFER = UTypename("\$infer", true, Location(0, 0))
-
-        fun parse(type: RolParser.TypeContext?): UTypename {
-            if (type == null) {
-                return INFER
+        @Contract("null -> null")
+        fun parse(type: RolParser.TypeContext?): UTypename? {
+            if (type == null || type.text.isBlank()) {
+                return null
             }
             val text = type.text
             return UTypename(text.removeSuffix("?"), text.endsWith("?"), type.location)
         }
+    }
+
+    fun toType(): Type {
+        return Type(name, isNullable)
     }
 
     override fun toString(): String {

@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.nio.file.Path as JPath
 import java.nio.file.Files
+import java.nio.file.Path as JPath
 
 plugins {
     kotlin("jvm") version "1.7.10"
@@ -17,6 +17,8 @@ repositories {
 
 dependencies {
     antlr("org.antlr:antlr4:4.11.1")
+
+    implementation("com.beust:klaxon:5.6")
 
     testImplementation(kotlin("test"))
 }
