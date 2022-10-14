@@ -43,6 +43,8 @@ class Transpiler(
 
     private val functions = mutableMapOf<TFn, String>()
 
+    private var indent = 0
+
     override fun start(node: TNode): LNode {
         object : TypedTreeVisitor<Unit>() {
             override fun defaultValue(node: TNode) {
@@ -110,9 +112,9 @@ class Transpiler(
 
     override fun visitFunctionDeclaration(declaration: TFunctionDeclaration): LNode {
         val name = functions[declaration]!!
-        val args = declaration.args.map { it.name }
+        val args = declaration.args.map { mangle(it.name, it.type) }
         val body = visit(declaration.body)
-        return LFunctionDefinition(name, args, if (body is LStatements) body else LStatements(listOf(body)))
+        return LFunctionDefinition(name, args, body.toStatements().withIndent(++indent)).also { indent-- }
     }
 
     override fun visitFunctionCall(call: TFunctionCall): LNode {
@@ -165,4 +167,8 @@ private val regex = "\\W".toRegex()
 private fun mangle(name: String, type: Type): String {
     val mangled = name + type.hashCode().toString(16) + name.hashCode().toString(16)
     return regex.replace(mangled, "_")
+}
+
+private fun LNode.toStatements(): LStatements {
+    return if (this is LStatements) this else LStatements(listOf(this))
 }

@@ -2,6 +2,7 @@ package io.github.seggan.rol.parsing
 
 import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
+import io.github.seggan.rol.tree.AccessModifier
 import io.github.seggan.rol.tree.typed.TArgument
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
@@ -59,18 +60,19 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             is UVarDef -> typeVariableDeclaration(node).also { currentFrame.vars.add(it) }
             is UVarAssign -> typeVariableAssignment(node)
             is UExternDeclaration -> typeExternDeclaration(node)
+            is UFunctionDeclaration -> typeFunctionDeclaration(node, true)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
         }
     }
 
-    private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
+    private fun typeFunctionDeclaration(node: UFunctionDeclaration, typeInternals: Boolean): TFunctionDeclaration {
         val args = node.args.map { TArgument(it.name, it.type, it.location) }
         return TFunctionDeclaration(
             node.name,
             args,
             node.type?.toType() ?: Type.VOID,
             node.access,
-            typeStatements(node.body),
+            typeStatements(node.body, args.map { TVarDef(it.name, it.type, AccessModifier.PRIVATE, it.location) }),
             node.location
         )
     }
@@ -97,7 +99,8 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     }
 
     private fun typeVariableAccess(expr: UVariableAccess): TVariableAccess {
-        val varDef = currentFrame.vars.find { it.name == expr.name } ?: Errors.undefinedReference(expr.name, expr.location)
+        val varDef =
+            currentFrame.vars.find { it.name == expr.name } ?: Errors.undefinedReference(expr.name, expr.location)
         return TVariableAccess(varDef.name, varDef.type, expr.location)
     }
 
@@ -238,11 +241,12 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         Errors.undefinedReference(name, call.location)
     }
 
-    private fun typeStatements(statements: UStatements): TStatements {
+    private fun typeStatements(statements: UStatements, extraVars: List<TVarDef> = emptyList()): TStatements {
         val flat = statements.shallowFlatten()
-        typedFunctions.addAll(flat.filterIsInstance<UFunctionDeclaration>().map(::typeFunctionDeclaration))
         typedFunctions.addAll(flat.filterIsInstance<UExternDeclaration>().map(::typeExternDeclaration))
+        typedFunctions.addAll(flat.filterIsInstance<UFunctionDeclaration>().map { typeFunctionDeclaration(it, false) })
         val vars = if (stack.isEmpty()) mutableListOf() else currentFrame.vars
+        vars.addAll(extraVars)
         stack.addFirst(StackFrame(vars, statements))
         return TStatements(statements.children.map(::type), statements.location).also { stack.removeFirst() }
     }

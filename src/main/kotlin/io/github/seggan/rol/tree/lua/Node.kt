@@ -5,10 +5,12 @@ sealed class LNode {
     abstract fun transpile(): String
 }
 
-class LStatements(private val statements: List<LNode>) : LNode() {
+class LStatements(private val statements: List<LNode>, private val indent: Int = 0) : LNode() {
     override fun transpile(): String {
-        return statements.joinToString("\n") { it.transpile() }
+        return statements.filter { it !is LNop }.joinToString("\n") { "\t".repeat(indent) + it.transpile() }
     }
+
+    fun withIndent(indent: Int) = LStatements(statements, indent)
 }
 
 class LString(private val string: String) : LNode() {
