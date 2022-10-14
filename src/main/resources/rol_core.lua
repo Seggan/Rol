@@ -1,3 +1,5 @@
+-- START BITWISE OPERATIONS
+
 -- bitwise AND lookup table, 0 to 15
 local BIT_AND_LOOKUP = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2 },
@@ -87,4 +89,42 @@ end
 
 function bitwiseNot(a)
     return -1 - math.floor(a)
+end
+
+function bitwiseLeftShift(a, b)
+    return math.floor(a) * 2 ^ math.floor(b)
+end
+
+function bitwiseRightShift(a, b)
+    return math.floor(a) / 2 ^ math.floor(b)
+end
+
+-- END BITWISE OPERATIONS
+-- START TYPE FUNCTIONS
+
+function typeof(value)
+    local type = type(value)
+    if type == "table" then
+        return type.__clazz
+    else
+        if type == "number" then
+            return "Num"
+        elseif type == "string" then
+            return "String"
+        elseif type == "boolean" then
+            return "Boolean"
+        elseif type == "nil" then
+            return "dyn?"
+        else
+            return type
+        end
+    end
+end
+
+function assertNonNull(value, location)
+    if value == nil then
+        error("Value is null: " .. location, 2)
+    else
+        return value
+    end
 end

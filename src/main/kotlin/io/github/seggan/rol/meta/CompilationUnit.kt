@@ -2,6 +2,7 @@ package io.github.seggan.rol.meta
 
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Klaxon
+import io.github.seggan.rol.tree.typed.Type
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -56,8 +57,14 @@ data class FileUnit(
                 "functions" to functions.map(FunctionUnit::serialize),
                 "variables" to variables.map(VariableUnit::serialize)
             )
-        )
+        ).toJsonString()
         return "-- ROLMETA $obj\n$text"
+    }
+
+    fun findFunction(name: String, args: List<Type>): FunctionUnit? {
+        return functions.find {
+            it.name == name && it.args.size == args.size && it.args.zip(args).all { (a, b) -> a.type.isAssignableFrom(b) }
+        }
     }
 }
 

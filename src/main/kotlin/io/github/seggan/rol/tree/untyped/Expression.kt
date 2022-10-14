@@ -2,6 +2,7 @@ package io.github.seggan.rol.tree.untyped
 
 import io.github.seggan.rol.tree.Location
 import io.github.seggan.rol.tree.typed.TBinaryOperator
+import io.github.seggan.rol.tree.typed.TPostfixOperator
 import io.github.seggan.rol.tree.typed.TPrefixOperator
 
 sealed class UExpression(children: List<UNode>, location: Location) : UNode(children, location)
@@ -40,8 +41,8 @@ enum class UBinaryOperator(private val symbol: String, val typedOperator: TBinar
     BITWISE_AND("&", TBinaryOperator.BITWISE_AND),
     BITWISE_OR("|", TBinaryOperator.BITWISE_OR),
     XOR("^", TBinaryOperator.BITWISE_XOR),
-    SHIFT_LEFT("<<", null),
-    SHIFT_RIGHT(">>", null);
+    SHIFT_LEFT("<<", TBinaryOperator.BITWISE_SHIFT_LEFT),
+    SHIFT_RIGHT(">>", TBinaryOperator.BITWISE_SHIFT_RIGHT);
 
     override fun toString() = symbol
 
@@ -78,9 +79,10 @@ class UPostfixExpression(val expr: UExpression, val type: UPostfixOperator, loca
     }
 }
 
-enum class UPostfixOperator(private val symbol: String) {
-    INC("++"),
-    DEC("--");
+enum class UPostfixOperator(private val symbol: String, val typedOperator: TPostfixOperator) {
+    INC("++", TPostfixOperator.INC),
+    DEC("--", TPostfixOperator.DEC),
+    NOT_NULL("!", TPostfixOperator.ASSERT_NON_NULL);
 
     override fun toString() = symbol
 

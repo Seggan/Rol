@@ -15,6 +15,7 @@ import io.github.seggan.rol.tree.typed.TLiteral
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TNull
 import io.github.seggan.rol.tree.typed.TNumber
+import io.github.seggan.rol.tree.typed.TPostfixExpression
 import io.github.seggan.rol.tree.typed.TPrefixExpression
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
@@ -33,13 +34,13 @@ import io.github.seggan.rol.tree.untyped.ULiteral
 import io.github.seggan.rol.tree.untyped.UNode
 import io.github.seggan.rol.tree.untyped.UNullLiteral
 import io.github.seggan.rol.tree.untyped.UNumberLiteral
+import io.github.seggan.rol.tree.untyped.UPostfixExpression
 import io.github.seggan.rol.tree.untyped.UPrefixExpression
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
-import kotlin.math.pow
 
 class TypeChecker(private val dependencyManager: DependencyManager, private val imports: Set<String>) {
 
@@ -63,7 +64,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     }
 
     private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
-        val args = node.args.map { TArgument(it.name, it.type.toType(), it.location) }
+        val args = node.args.map { TArgument(it.name, it.type, it.location) }
         return TFunctionDeclaration(
             node.name,
             args,
@@ -87,6 +88,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         return when (expr) {
             is UBinaryExpression -> typeBinaryExpression(expr)
             is UPrefixExpression -> typePrefixExpression(expr)
+            is UPostfixExpression -> typePostfixExpression(expr)
             is ULiteral -> typeLiteral(expr)
             is UFunctionCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
@@ -124,7 +126,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 Errors.typeMismatch(argType, left.type, left.location)
             }
         } else {
-            // special handling for string concat and shifts
+            // special handling for string concat
             if (expr.type == UBinaryOperator.PLUS) {
                 if (Type.STRING.isAssignableFrom(left.type)) {
                     if (Type.STRING.isAssignableFrom(right.type)) {
@@ -140,42 +142,6 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                     }
                 } else {
                     Errors.typeMismatch(Type.STRING, left.type, left.location)
-                }
-            } else if (expr.type == UBinaryOperator.SHIFT_LEFT) {
-                // can be replaced with a multiplication in the case of literals
-                if (Type.NUMBER.isAssignableFrom(left.type)) {
-                    if (Type.NUMBER.isAssignableFrom(right.type)) {
-                        return if (right is TNumber) {
-                            TBinaryExpression(
-                                left, TNumber(2.0.pow(right.value), right.location),
-                                TBinaryOperator.MULTIPLY, expr.location
-                            )
-                        } else {
-                            TBinaryExpression(left, right, TBinaryOperator.BITWISE_SHIFT_LEFT, expr.location)
-                        }
-                    } else {
-                        Errors.typeMismatch(Type.NUMBER, right.type, right.location)
-                    }
-                } else {
-                    Errors.typeMismatch(Type.NUMBER, left.type, left.location)
-                }
-            } else if (expr.type == UBinaryOperator.SHIFT_RIGHT) {
-                // can be replaced with a division in the case of literals
-                if (Type.NUMBER.isAssignableFrom(left.type)) {
-                    if (Type.NUMBER.isAssignableFrom(right.type)) {
-                        return if (right is TNumber) {
-                            TBinaryExpression(
-                                left, TNumber(2.0.pow(right.value), right.location),
-                                TBinaryOperator.DIVIDE, expr.location
-                            )
-                        } else {
-                            TBinaryExpression(left, right, TBinaryOperator.BITWISE_SHIFT_RIGHT, expr.location)
-                        }
-                    } else {
-                        Errors.typeMismatch(Type.NUMBER, right.type, right.location)
-                    }
-                } else {
-                    Errors.typeMismatch(Type.NUMBER, left.type, left.location)
                 }
             } else {
                 throw AssertionError() // should never happen
@@ -199,6 +165,17 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             } else {
                 Errors.typeMismatch(op.argType, operand.type, operand.location)
             }
+        }
+    }
+
+    private fun typePostfixExpression(expr: UPostfixExpression): TExpression {
+        val operand = checkVoid(typeExpression(expr.expr))
+        val op = expr.type.typedOperator
+        val result = op.typer(operand.type)
+        if (result == null) {
+            Errors.typeMismatch(op.expect, operand.type, operand.location)
+        } else {
+            return TPostfixExpression(operand, op, result, expr.location)
         }
     }
 
@@ -251,7 +228,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             }
         }
         for (import in imports) {
-            val dep = dependencyManager.getDependency(import) ?: continue
+            val dep = dependencyManager.getPackage(import) ?: continue
             for (func in dep.functions.filter { it.name == name }) {
                 if (func.matches(call, args)) {
                     return TFunctionCall(name, args, func.returnType, call.location)
@@ -265,7 +242,8 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         val flat = statements.shallowFlatten()
         typedFunctions.addAll(flat.filterIsInstance<UFunctionDeclaration>().map(::typeFunctionDeclaration))
         typedFunctions.addAll(flat.filterIsInstance<UExternDeclaration>().map(::typeExternDeclaration))
-        stack.addFirst(StackFrame(currentFrame.vars, statements))
+        val vars = if (stack.isEmpty()) mutableListOf() else currentFrame.vars
+        stack.addFirst(StackFrame(vars, statements))
         return TStatements(statements.children.map(::type), statements.location).also { stack.removeFirst() }
     }
 }

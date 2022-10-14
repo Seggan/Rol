@@ -2,7 +2,11 @@ package io.github.seggan.rol.tree.typed
 
 open class TypedTreeVisitor<R> {
 
-    fun visit(node: TNode): R {
+    open fun start(node: TNode): R {
+        return visit(node)
+    }
+
+    protected fun visit(node: TNode): R {
         return node.accept(this)
     }
 
@@ -14,12 +18,17 @@ open class TypedTreeVisitor<R> {
         return statements.children.map(::visit).last()
     }
 
-    fun visitBinaryExpression(expression: TBinaryExpression): R {
+    open fun visitBinaryExpression(expression: TBinaryExpression): R {
         expression.children.forEach(::visit)
         return defaultValue(expression)
     }
 
     open fun visitPrefixExpression(expression: TPrefixExpression): R {
+        expression.children.forEach(::visit)
+        return defaultValue(expression)
+    }
+
+    open fun visitPostfixExpression(expression: TPostfixExpression): R {
         expression.children.forEach(::visit)
         return defaultValue(expression)
     }

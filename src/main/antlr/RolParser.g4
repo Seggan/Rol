@@ -73,6 +73,7 @@ noTypeArgList
 
 expression
     : primary
+    | nonNullAssertion=NOT NL* primary
     | expression NL* DOT NL* (call | identifier)
     | expression NL* postfixOp=(INC | DEC)
     | prefixOp=(NOT | TILDE | MINUS | INC | DEC) NL* expression

@@ -1,7 +1,9 @@
 package io.github.seggan.rol.tree.untyped
 
 import io.github.seggan.rol.tree.AccessModifier
+import io.github.seggan.rol.tree.Argument
 import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.typed.Type
 
 sealed class UFn(val name: String, val args: List<UArgument>, children: List<UNode> = emptyList(), location: Location) :
     UNode(children, location)
@@ -31,7 +33,10 @@ class UExternDeclaration(name: String, val nativeName: String, args: List<UArgum
     }
 }
 
-class UArgument(name: String, val type: UTypename, location: Location) : UVar(name, listOf(), location) {
+class UArgument(name: String, type: UTypename, location: Location) : UVar(name, listOf(), location), Argument {
+
+    override val type: Type = type.toType()
+
     override fun toString(): String {
         return "Argument($name, $type)"
     }

@@ -62,6 +62,11 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
                 UBinaryOperator.fromSymbol(ctx.op.text),
                 ctx.location
             )
+            ctx.nonNullAssertion != null -> UPostfixExpression(
+                visit(ctx.expression(0)).asExpr(),
+                UPostfixOperator.NOT_NULL,
+                ctx.location
+            )
             ctx.identifier() != null -> UAccess(visit(ctx.expression(0)).asExpr(), ctx.identifier().text, ctx.location)
             ctx.call() != null -> {
                 val call = visit(ctx.call()) as UFunctionCall

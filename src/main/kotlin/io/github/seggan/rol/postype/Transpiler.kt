@@ -1,0 +1,168 @@
+package io.github.seggan.rol.postype
+
+import io.github.seggan.rol.DependencyManager
+import io.github.seggan.rol.Errors
+import io.github.seggan.rol.meta.FunctionUnit
+import io.github.seggan.rol.tree.lua.LAssignment
+import io.github.seggan.rol.tree.lua.LBinaryExpression
+import io.github.seggan.rol.tree.lua.LFunctionCall
+import io.github.seggan.rol.tree.lua.LFunctionDefinition
+import io.github.seggan.rol.tree.lua.LLiteral
+import io.github.seggan.rol.tree.lua.LNode
+import io.github.seggan.rol.tree.lua.LNop
+import io.github.seggan.rol.tree.lua.LStatements
+import io.github.seggan.rol.tree.lua.LString
+import io.github.seggan.rol.tree.lua.LUnaryExpression
+import io.github.seggan.rol.tree.lua.LVariableDeclaration
+import io.github.seggan.rol.tree.typed.TBinaryExpression
+import io.github.seggan.rol.tree.typed.TBinaryOperator
+import io.github.seggan.rol.tree.typed.TBoolean
+import io.github.seggan.rol.tree.typed.TExternDeclaration
+import io.github.seggan.rol.tree.typed.TFn
+import io.github.seggan.rol.tree.typed.TFunctionCall
+import io.github.seggan.rol.tree.typed.TFunctionDeclaration
+import io.github.seggan.rol.tree.typed.TNode
+import io.github.seggan.rol.tree.typed.TNull
+import io.github.seggan.rol.tree.typed.TNumber
+import io.github.seggan.rol.tree.typed.TPostfixExpression
+import io.github.seggan.rol.tree.typed.TPostfixOperator
+import io.github.seggan.rol.tree.typed.TPrefixExpression
+import io.github.seggan.rol.tree.typed.TStatements
+import io.github.seggan.rol.tree.typed.TString
+import io.github.seggan.rol.tree.typed.TVarAssign
+import io.github.seggan.rol.tree.typed.TVarDef
+import io.github.seggan.rol.tree.typed.TVariableAccess
+import io.github.seggan.rol.tree.typed.Type
+import io.github.seggan.rol.tree.typed.TypedTreeVisitor
+import java.util.EnumSet
+
+class Transpiler(
+    private val manager: DependencyManager,
+    private val packages: Set<String>,
+) : TypedTreeVisitor<LNode>() {
+
+    private val functions = mutableMapOf<TFn, String>()
+
+    override fun start(node: TNode): LNode {
+        object : TypedTreeVisitor<Unit>() {
+            override fun defaultValue(node: TNode) {
+                return
+            }
+
+            override fun visitFunctionDeclaration(declaration: TFunctionDeclaration) {
+                val mangled = StringBuilder(mangle(declaration.name, declaration.type))
+                for (arg in declaration.args) {
+                    mangled.append(mangle(arg.name, arg.type))
+                }
+                functions[declaration] = mangled.toString()
+            }
+
+            override fun visitExternDeclaration(declaration: TExternDeclaration) {
+                functions[declaration] = declaration.nativeName
+            }
+        }.start(node)
+        return visit(node)
+    }
+
+    override fun defaultValue(node: TNode): LNode {
+        return LNop
+    }
+
+    override fun visitStatements(statements: TStatements): LNode {
+        return LStatements(statements.children.map(::visit))
+    }
+
+    override fun visitPrefixExpression(expression: TPrefixExpression): LNode {
+        return LUnaryExpression(expression.operator.op, visit(expression.right))
+    }
+
+    override fun visitBinaryExpression(expression: TBinaryExpression): LNode {
+        val op = expression.operator
+        return if (op in bitwiseOps) {
+            LFunctionCall(op.op, visit(expression.left), visit(expression.right))
+        } else {
+            LBinaryExpression(visit(expression.left), op.op, visit(expression.right))
+        }
+    }
+
+    override fun visitPostfixExpression(expression: TPostfixExpression): LNode {
+        if (expression.operator == TPostfixOperator.ASSERT_NON_NULL) {
+            return LFunctionCall("assertNonNull", visit(expression.left), LString(expression.location.toString()))
+        }
+        return super.visitPostfixExpression(expression)
+    }
+
+    override fun visitNumber(num: TNumber): LNode {
+        return LLiteral(num.value.toString())
+    }
+
+    override fun visitString(string: TString): LNode {
+        return LString(string.value)
+    }
+
+    override fun visitBoolean(bool: TBoolean): LNode {
+        return LLiteral(bool.value.toString())
+    }
+
+    override fun visitNull(tNull: TNull): LNode {
+        return LLiteral("nil")
+    }
+
+    override fun visitFunctionDeclaration(declaration: TFunctionDeclaration): LNode {
+        val name = functions[declaration]!!
+        val args = declaration.args.map { it.name }
+        val body = visit(declaration.body)
+        return LFunctionDefinition(name, args, if (body is LStatements) body else LStatements(listOf(body)))
+    }
+
+    override fun visitFunctionCall(call: TFunctionCall): LNode {
+        val available = functions.filterKeys { it.matches(call.name, call.args) }
+        val name: String
+        if (available.size > 1) {
+            Errors.undefinedReference(call.name, call.location)
+        } else if (available.isEmpty()) {
+            var function: FunctionUnit? = null
+            for (pkg in packages) {
+                function = manager.getPackage(pkg)?.findFunction(call.name, call.args.map(TNode::type))
+                if (function != null) {
+                    break
+                }
+            }
+            if (function == null) {
+                Errors.undefinedReference(call.name, call.location)
+            }
+            name = function.mangled
+        } else {
+            name = available.entries.first().value
+        }
+        val args = call.args.map(::visit)
+        return LFunctionCall(name, args)
+    }
+
+    override fun visitVariableDeclaration(declaration: TVarDef): LNode {
+        return LVariableDeclaration(mangle(declaration.name, declaration.type))
+    }
+
+    override fun visitVariableAccess(access: TVariableAccess): LNode {
+        return LLiteral(mangle(access.name, access.type))
+    }
+
+    override fun visitVariableAssignment(assignment: TVarAssign): LNode {
+        return LAssignment(mangle(assignment.name, assignment.type), visit(assignment.value))
+    }
+}
+
+private val bitwiseOps = EnumSet.of(
+    TBinaryOperator.BITWISE_AND,
+    TBinaryOperator.BITWISE_OR,
+    TBinaryOperator.BITWISE_XOR,
+    TBinaryOperator.BITWISE_SHIFT_LEFT,
+    TBinaryOperator.BITWISE_SHIFT_RIGHT,
+)
+
+private val regex = "\\W".toRegex()
+
+private fun mangle(name: String, type: Type): String {
+    val mangled = name + type.hashCode().toString(16) + name.hashCode().toString(16)
+    return regex.replace(mangled, "_")
+}

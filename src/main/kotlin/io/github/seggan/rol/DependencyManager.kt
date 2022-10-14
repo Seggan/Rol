@@ -9,7 +9,7 @@ class DependencyManager(files: List<Path>) {
     private val unloadedDependencies = ArrayDeque(files)
     private val loadedDependencies = mutableListOf<FileUnit>()
 
-    fun getDependency(pkg: String): FileUnit? {
+    fun getPackage(pkg: String): FileUnit? {
         val alreadyLoaded = loadedDependencies.find { it.pkg == pkg }
         if (alreadyLoaded != null) {
             return alreadyLoaded
