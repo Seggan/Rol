@@ -155,10 +155,11 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitExternDeclaration(ctx: RolParser.ExternDeclarationContext): UNode {
-        val nativeName = ctx.identifier(0).text
+        val name = ctx.identifier().dropLast(if (ctx.name == null) 0 else 1)
+            .joinToString(".", transform = RolParser.IdentifierContext::getText)
         return UExternDeclaration(
-            if (ctx.identifier().size > 1) ctx.identifier(1).text else nativeName,
-            nativeName,
+            if (ctx.name == null) name else ctx.name.text,
+            name,
             ctx.noTypeArgList().identifier().map {
                 UArgument(
                     it.text,

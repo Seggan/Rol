@@ -64,7 +64,7 @@ constructorDeclaration
     ;
 
 externDeclaration
-    : EXTERN NL* identifier NL* noTypeArgList NL* (COLON NL* DYN)? (IS identifier)?
+    : EXTERN NL* identifier (DOT identifier)* NL* noTypeArgList NL* (COLON NL* DYN)? (IS name=identifier)?
     ;
 
 noTypeArgList
