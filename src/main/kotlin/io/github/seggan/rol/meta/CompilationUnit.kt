@@ -58,7 +58,7 @@ data class FileUnit(
                 "variables" to variables.map(VariableUnit::serialize)
             )
         ).toJsonString()
-        return "-- ROLMETA $obj\n$text"
+        return "-- ROLMETA $obj\npackage.path = package.path .. \";./?.lua\"\nrequire \"rol_core\"\n$text"
     }
 
     fun findFunction(name: String, args: List<Type>): FunctionUnit? {

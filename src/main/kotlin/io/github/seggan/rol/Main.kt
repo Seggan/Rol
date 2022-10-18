@@ -25,7 +25,7 @@ import kotlin.io.path.nameWithoutExtension
 import kotlin.system.exitProcess
 
 fun main() {
-    val file = Path.of("test.rol")
+    val file = Path.of("rolbuild/test.rol")
     val path = System.getenv("ROL_HOME")?.split(File.pathSeparatorChar)?.map(Path::of) ?: emptyList()
     val files = path.flatMap { p ->
         val files = mutableListOf<Path>()
@@ -46,6 +46,11 @@ fun main() {
     DEPENDENCY_MANAGER = DependencyManager(files)
     val unit = getCompilationUnit(file) ?: return
     Files.writeString(file.resolveSibling("${file.nameWithoutExtension}.lua"), unit.serialize())
+    Files.newOutputStream(file.resolveSibling("rol_core.lua")).use { stream ->
+        FileUnit::class.java.getResourceAsStream("/rol_core.lua")!!.use {
+            it.copyTo(stream)
+        }
+    }
 }
 
 private lateinit var DEPENDENCY_MANAGER: DependencyManager
