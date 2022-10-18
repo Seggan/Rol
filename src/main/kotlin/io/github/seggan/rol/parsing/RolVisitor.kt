@@ -79,10 +79,10 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     override fun visitNumber(ctx: RolParser.NumberContext): UNode {
         val text = ctx.text
         val num = when {
-            ctx.Number() != null -> text.toDouble()
-            ctx.HexNumber() != null -> text.substring(2).toLong(16).toDouble()
-            ctx.BinNumber() != null -> text.substring(2).toLong(2).toDouble()
-            ctx.OctNumber() != null -> text.substring(2).toLong(8).toDouble()
+            ctx.Number() != null -> text.toBigDecimal()
+            ctx.HexNumber() != null -> text.substring(2).toLong(16).toBigDecimal()
+            ctx.BinNumber() != null -> text.substring(2).toLong(2).toBigDecimal()
+            ctx.OctNumber() != null -> text.substring(2).toLong(8).toBigDecimal()
             else -> throw AssertionError() // should never happen
         }
         return UNumberLiteral(num, ctx.location)

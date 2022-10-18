@@ -95,7 +95,7 @@ class Transpiler(
     }
 
     override fun visitNumber(num: TNumber): LNode {
-        return LLiteral(num.value.toString())
+        return LLiteral(num.value.stripTrailingZeros().toPlainString())
     }
 
     override fun visitString(string: TString): LNode {

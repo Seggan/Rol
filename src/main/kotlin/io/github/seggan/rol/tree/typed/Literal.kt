@@ -1,12 +1,13 @@
 package io.github.seggan.rol.tree.typed
 
 import io.github.seggan.rol.tree.Location
+import java.math.BigDecimal
 
 sealed class TLiteral(type: Type, location: Location) : TExpression(type, listOf(), location)
 
-class TNumber(val value: Double, location: Location) : TLiteral(Type.NUMBER, location) {
+class TNumber(val value: BigDecimal, location: Location) : TLiteral(Type.NUMBER, location) {
 
-    constructor(value: Int, location: Location) : this(value.toDouble(), location)
+    constructor(value: Int, location: Location) : this(value.toBigDecimal(), location)
 
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitNumber(this)

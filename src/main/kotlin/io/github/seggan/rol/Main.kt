@@ -5,7 +5,9 @@ import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
+import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
+import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -79,7 +81,12 @@ fun compile(path: Path): FileUnit {
 
     val ast = parsed.accept(RolVisitor()) as UStatements
     println(ast)
-    val typedAst = TypeChecker(DEPENDENCY_MANAGER, imports).typeAst(ast)
+    var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, imports).typeAst(ast)
+    var folder: ConstantFolder
+    do {
+        folder = ConstantFolder()
+        typedAst = folder.start(typedAst)
+    } while (folder.changed)
     val transpiledAst = Transpiler(DEPENDENCY_MANAGER, imports).start(typedAst)
     return FileUnit(path.nameWithoutExtension, pkg, setOf(), setOf(), transpiledAst.transpile())
 }

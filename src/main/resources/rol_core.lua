@@ -123,7 +123,7 @@ end
 
 function assertNonNull(value, location)
     if value == nil then
-        error("Value is null: " .. location, 2)
+        error("Expression is null: " .. location, 2)
     else
         return value
     end
