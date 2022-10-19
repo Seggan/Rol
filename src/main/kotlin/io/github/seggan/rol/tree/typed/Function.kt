@@ -39,3 +39,10 @@ class TArgument(name: String, type: Type, location: Location) : TVar(name, type,
         return visitor.visitArgument(this)
     }
 }
+
+class TReturn(val value: TExpression?, location: Location) :
+    TNode(value?.type ?: Type.VOID, listOfNotNull(value), location) {
+    override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
+        return visitor.visitReturn(this)
+    }
+}

@@ -78,4 +78,11 @@ open class TypedTreeVisitor<R> {
         visit(assignment.value)
         return defaultValue(assignment)
     }
+
+    open fun visitReturn(ret: TReturn): R {
+        if (ret.value != null) {
+            visit(ret.value)
+        }
+        return defaultValue(ret)
+    }
 }

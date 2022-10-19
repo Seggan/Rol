@@ -43,10 +43,3 @@ class UForEachStatement(val varName: String, val iterable: UExpression, val body
         return "ForEachStatement($varName, $iterable, $body)"
     }
 }
-
-class UReturnStatement(val value: UExpression? = null, location: Location) :
-    UControlStatement(listOfNotNull(value), location) {
-    override fun toString(): String {
-        return "ReturnStatement($value)"
-    }
-}

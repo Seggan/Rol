@@ -3,9 +3,9 @@ package io.github.seggan.rol.tree.typed
 import io.github.seggan.rol.tree.Location
 import java.math.BigDecimal
 
-sealed class TLiteral(type: Type, location: Location) : TExpression(type, listOf(), location)
+sealed class TLiteral<T>(val value: T, type: Type, location: Location) : TExpression(type, listOf(), location)
 
-class TNumber(val value: BigDecimal, location: Location) : TLiteral(Type.NUMBER, location) {
+class TNumber(value: BigDecimal, location: Location) : TLiteral<BigDecimal>(value, Type.NUMBER, location) {
 
     constructor(value: Int, location: Location) : this(value.toBigDecimal(), location)
 
@@ -14,19 +14,19 @@ class TNumber(val value: BigDecimal, location: Location) : TLiteral(Type.NUMBER,
     }
 }
 
-class TString(val value: String, location: Location) : TLiteral(Type.STRING, location) {
+class TString(value: String, location: Location) : TLiteral<String>(value, Type.STRING, location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitString(this)
     }
 }
 
-class TBoolean(val value: Boolean, location: Location) : TLiteral(Type.BOOLEAN, location) {
+class TBoolean(value: Boolean, location: Location) : TLiteral<Boolean>(value, Type.BOOLEAN, location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitBoolean(this)
     }
 }
 
-class TNull(location: Location) : TLiteral(Type.ANY, location) {
+class TNull(location: Location) : TLiteral<Unit?>(null, Type.ANY, location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitNull(this)
     }

@@ -41,3 +41,9 @@ class UArgument(name: String, type: UTypename, location: Location) : UVar(name, 
         return "Argument($name, $type)"
     }
 }
+
+class UReturn(val value: UExpression?, location: Location) : UNode(listOfNotNull(value), location) {
+
+    override fun toString() = "return $value"
+
+}

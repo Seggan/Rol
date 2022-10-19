@@ -10,6 +10,7 @@ import io.github.seggan.rol.tree.lua.LFunctionDefinition
 import io.github.seggan.rol.tree.lua.LLiteral
 import io.github.seggan.rol.tree.lua.LNode
 import io.github.seggan.rol.tree.lua.LNop
+import io.github.seggan.rol.tree.lua.LReturn
 import io.github.seggan.rol.tree.lua.LStatements
 import io.github.seggan.rol.tree.lua.LString
 import io.github.seggan.rol.tree.lua.LUnaryExpression
@@ -27,6 +28,7 @@ import io.github.seggan.rol.tree.typed.TNumber
 import io.github.seggan.rol.tree.typed.TPostfixExpression
 import io.github.seggan.rol.tree.typed.TPostfixOperator
 import io.github.seggan.rol.tree.typed.TPrefixExpression
+import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
 import io.github.seggan.rol.tree.typed.TVarAssign
@@ -151,6 +153,10 @@ class Transpiler(
 
     override fun visitVariableAssignment(assignment: TVarAssign): LNode {
         return LAssignment(mangle(assignment.name, assignment.type), visit(assignment.value))
+    }
+
+    override fun visitReturn(ret: TReturn): LNode {
+        return LReturn(if (ret.value == null) null else visit(ret.value))
     }
 }
 

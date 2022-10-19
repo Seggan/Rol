@@ -23,6 +23,7 @@ import io.github.seggan.rol.tree.untyped.UPostfixExpression
 import io.github.seggan.rol.tree.untyped.UPostfixOperator
 import io.github.seggan.rol.tree.untyped.UPrefixExpression
 import io.github.seggan.rol.tree.untyped.UPrefixOperator
+import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
 import io.github.seggan.rol.tree.untyped.UTypename
@@ -77,7 +78,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitNumber(ctx: RolParser.NumberContext): UNode {
-        val text = ctx.text
+        val text = ctx.text.replace("_", "")
         val num = when {
             ctx.Number() != null -> text.toBigDecimal()
             ctx.HexNumber() != null -> text.substring(2).toLong(16).toBigDecimal()
@@ -163,10 +164,17 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.noTypeArgList().identifier().map {
                 UArgument(
                     it.text,
-                    UTypename("dyn", false, it.location),
+                    UTypename("dyn?", false, it.location),
                     it.location
                 )
             },
+            ctx.location
+        )
+    }
+
+    override fun visitReturnStatement(ctx: RolParser.ReturnStatementContext): UNode {
+        return UReturn(
+            if (ctx.expression() == null) null else visit(ctx.expression()).asExpr(),
             ctx.location
         )
     }

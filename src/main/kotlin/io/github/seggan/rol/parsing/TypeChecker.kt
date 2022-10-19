@@ -18,6 +18,7 @@ import io.github.seggan.rol.tree.typed.TNull
 import io.github.seggan.rol.tree.typed.TNumber
 import io.github.seggan.rol.tree.typed.TPostfixExpression
 import io.github.seggan.rol.tree.typed.TPrefixExpression
+import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
 import io.github.seggan.rol.tree.typed.TVarAssign
@@ -37,6 +38,7 @@ import io.github.seggan.rol.tree.untyped.UNullLiteral
 import io.github.seggan.rol.tree.untyped.UNumberLiteral
 import io.github.seggan.rol.tree.untyped.UPostfixExpression
 import io.github.seggan.rol.tree.untyped.UPrefixExpression
+import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
 import io.github.seggan.rol.tree.untyped.UVarAssign
@@ -60,19 +62,21 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             is UVarDef -> typeVariableDeclaration(node).also { currentFrame.vars.add(it) }
             is UVarAssign -> typeVariableAssignment(node)
             is UExternDeclaration -> typeExternDeclaration(node)
-            is UFunctionDeclaration -> typeFunctionDeclaration(node, true)
+            is UFunctionDeclaration -> typeFunctionDeclaration(node)
+            is UReturn -> typeReturn(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
         }
     }
 
-    private fun typeFunctionDeclaration(node: UFunctionDeclaration, typeInternals: Boolean): TFunctionDeclaration {
+    private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
         val args = node.args.map { TArgument(it.name, it.type, it.location) }
+        val type = node.type?.toType() ?: Type.VOID
         return TFunctionDeclaration(
             node.name,
             args,
-            node.type?.toType() ?: Type.VOID,
+            type,
             node.access,
-            typeStatements(node.body, args.map { TVarDef(it.name, it.type, AccessModifier.PRIVATE, it.location) }),
+            typeStatements(node.body, args.map { TVarDef(it.name, it.type, AccessModifier.PRIVATE, it.location) }, type),
             node.location
         )
     }
@@ -84,6 +88,14 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             declaration.args.map { TArgument(it.name, Type.ANY, it.location) },
             declaration.location
         )
+    }
+
+    private fun typeReturn(node: UReturn): TNode {
+        val statement = TReturn(if (node.value == null) null else typeExpression(node.value), node.location)
+        if (statement.type != currentFrame.expectedReturn) {
+            Errors.typeMismatch(currentFrame.expectedReturn, statement.type, statement.location)
+        }
+        return statement
     }
 
     private fun typeExpression(expr: UExpression): TExpression {
@@ -99,12 +111,11 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     }
 
     private fun typeVariableAccess(expr: UVariableAccess): TVariableAccess {
-        val varDef =
-            currentFrame.vars.find { it.name == expr.name } ?: Errors.undefinedReference(expr.name, expr.location)
+        val varDef = currentFrame.vars.find { it.name == expr.name } ?: Errors.undefinedReference(expr.name, expr.location)
         return TVariableAccess(varDef.name, varDef.type, expr.location)
     }
 
-    private fun typeLiteral(literal: ULiteral): TLiteral {
+    private fun typeLiteral(literal: ULiteral): TLiteral<*> {
         return when (literal) {
             is UNumberLiteral -> TNumber(literal.value, literal.location)
             is UStringLiteral -> TString(literal.value, literal.location)
@@ -241,13 +252,17 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         Errors.undefinedReference(name, call.location)
     }
 
-    private fun typeStatements(statements: UStatements, extraVars: List<TVarDef> = emptyList()): TStatements {
+    private fun typeStatements(
+        statements: UStatements,
+        extraVars: List<TVarDef> = emptyList(),
+        returnType: Type = Type.VOID
+    ): TStatements {
         val flat = statements.shallowFlatten()
         typedFunctions.addAll(flat.filterIsInstance<UExternDeclaration>().map(::typeExternDeclaration))
-        typedFunctions.addAll(flat.filterIsInstance<UFunctionDeclaration>().map { typeFunctionDeclaration(it, false) })
+        typedFunctions.addAll(flat.filterIsInstance<UFunctionDeclaration>().map { typeFunctionDeclaration(it) })
         val vars = if (stack.isEmpty()) mutableListOf() else currentFrame.vars
         vars.addAll(extraVars)
-        stack.addFirst(StackFrame(vars, statements))
+        stack.addFirst(StackFrame(vars, statements, returnType))
         return TStatements(statements.children.map(::type), statements.location).also { stack.removeFirst() }
     }
 }
@@ -263,4 +278,4 @@ private fun checkVoid(expr: TExpression): TExpression {
     return expr
 }
 
-private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements)
+private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements, val expectedReturn: Type)

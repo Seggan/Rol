@@ -63,6 +63,12 @@ class LFunctionDefinition(val name: String, val args: List<String>, val body: LS
     }
 }
 
+class LReturn(val expression: LNode?) : LNode() {
+    override fun transpile(): String {
+        return "return ${expression?.transpile() ?: ""}"
+    }
+}
+
 object LNop : LNode() {
     override fun transpile(): String {
         return ""
