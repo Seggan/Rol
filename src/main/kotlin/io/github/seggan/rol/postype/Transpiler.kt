@@ -40,7 +40,7 @@ import java.util.EnumSet
 
 class Transpiler(
     private val manager: DependencyManager,
-    private val packages: Set<String>,
+    private val imports: Set<String>,
 ) : TypedTreeVisitor<LNode>() {
 
     val functions = mutableMapOf<TFn, String>()
@@ -126,10 +126,12 @@ class Transpiler(
             Errors.undefinedReference(call.name, call.location)
         } else if (available.isEmpty()) {
             var function: FunctionUnit? = null
-            for (pkg in packages) {
-                function = manager.getPackage(pkg)?.findFunction(call.name, call.args.map(TNode::type))
-                if (function != null) {
-                    break
+            for (import in imports) {
+                for (pkg in manager.getPackage(import)) {
+                    function = pkg.findFunction(call.name, call.args.map(TNode::type))
+                    if (function != null) {
+                        break
+                    }
                 }
             }
             if (function == null) {

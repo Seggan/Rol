@@ -5,6 +5,7 @@ import io.github.seggan.rol.antlr.RolParserBaseVisitor
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.location
 import io.github.seggan.rol.tree.untyped.AssignType
@@ -108,9 +109,8 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         val name = ctx.identifier().text
         val def = UVarDef(
             name,
-            ctx.CONST() != null,
+            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null, false),
             if (ctx.type() == null) null else Type.parse(ctx.type().text),
-            AccessModifier.parse(ctx.accessModifier()),
             ctx.location
         )
         return if (ctx.expression() == null) {
@@ -148,7 +148,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return UFunctionDeclaration(
             ctx.identifier().text,
             ctx.argList().arg().map { Argument(it.identifier().text, Type.parse(it.type().text), it.location) },
-            AccessModifier.parse(ctx.accessModifier()),
+            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null, ctx.INST() != null),
             visit(ctx.block()).asStatements(),
             if (ctx.type() == null) Type.VOID else Type.parse(ctx.type().text),
             ctx.location

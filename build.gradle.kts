@@ -74,6 +74,11 @@ tasks.register("compileStdlib") {
         val compiler = JPath.of("$buildDir/libs/$jarName")
         val stdlib = JPath.of("$projectDir/src/main/rol")
         Files.walk(stdlib).forEach { file ->
+            if (file.fileName.toString().endsWith(".lua")) {
+                Files.delete(file)
+            }
+        }
+        Files.walk(stdlib).forEach { file ->
             if (file.fileName.toString().endsWith(".rol")) {
                 javaexec {
                     classpath = files(compiler)

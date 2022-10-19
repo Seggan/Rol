@@ -53,7 +53,7 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
             declaration.name,
             declaration.args,
             declaration.type,
-            declaration.access,
+            declaration.modifiers,
             visit(declaration.body) as TStatements,
             declaration.location
         )

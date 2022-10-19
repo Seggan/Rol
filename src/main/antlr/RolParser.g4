@@ -44,7 +44,7 @@ assignmentOp
     ;
 
 functionDeclaration
-    : accessModifier? NL* INST? NL* FUN NL* identifier NL* argList NL* (COLON NL* type)? NL* block
+    : accessModifier? NL* CONST? NL* INST? NL* FUN NL* identifier NL* argList NL* (COLON NL* type)? NL* block
     ;
 
 argList
@@ -150,7 +150,7 @@ block
     ;
 
 type
-    : (identifier QUESTION?) | DYN
+    : (identifier | DYN) QUESTION?
     ;
 
 // identifier and soft keywords

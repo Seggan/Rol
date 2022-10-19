@@ -3,6 +3,7 @@ package io.github.seggan.rol.parsing
 import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
@@ -74,8 +75,12 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             node.name,
             args,
             type,
-            node.access,
-            typeStatements(node.body, args.map { TVarDef(it.name, it.type, AccessModifier.PRIVATE, it.location) }, type),
+            node.modifiers,
+            typeStatements(node.body, args.map { TVarDef(it.name, it.type, Modifiers(
+                AccessModifier.PRIVATE,
+                const = true,
+                inst = false
+            ), it.location) }, type),
             node.location
         )
     }
@@ -203,7 +208,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 .firstOrNull { it.name == name }
             if (first != null) {
                 val expr = typeExpression(first.value)
-                return TVarDef(name, expr.type, decl.access, decl.location)
+                return TVarDef(name, expr.type, decl.modifiers, decl.location)
             } else {
                 Errors.genericError(
                     "Type inference",
@@ -212,7 +217,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 )
             }
         } else {
-            return TVarDef(name, type, decl.access, decl.location)
+            return TVarDef(name, type, decl.modifiers, decl.location)
         }
     }
 
@@ -241,9 +246,9 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             }
         }
         for (import in imports) {
-            val dep = dependencyManager.getPackage(import) ?: continue
-            for (func in dep.functions.filter { it.name == name }) {
-                if (func.matches(call, args)) {
+            for (dep in dependencyManager.getPackage(import)) {
+                val func = dep.findFunction(name, args.map(TNode::type))
+                if (func != null) {
                     dependencyManager.usedDependencies.add(dep)
                     return TFunctionCall(name, args, func.returnType, call.location)
                 }

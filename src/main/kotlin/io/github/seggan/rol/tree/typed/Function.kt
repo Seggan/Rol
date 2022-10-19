@@ -1,8 +1,8 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 
 sealed class TFn(val name: String, val args: List<Argument>, type: Type, children: List<TNode>, location: Location) :
@@ -19,7 +19,7 @@ class TFunctionDeclaration(
     name: String,
     args: List<Argument>,
     type: Type,
-    val access: AccessModifier,
+    val modifiers: Modifiers,
     val body: TStatements,
     location: Location
 ) : TFn(name, args, type, listOf(body), location) {

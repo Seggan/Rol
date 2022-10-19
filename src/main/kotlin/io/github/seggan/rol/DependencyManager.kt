@@ -2,30 +2,35 @@ package io.github.seggan.rol
 
 import io.github.seggan.rol.meta.FileUnit
 import java.nio.file.Path
+import kotlin.io.path.exists
 import kotlin.io.path.extension
+import kotlin.io.path.nameWithoutExtension
 
 class DependencyManager(files: List<Path>) {
 
-    private val unloadedDependencies = ArrayDeque(files)
-    private val loadedDependencies = mutableListOf<FileUnit>()
-    val usedDependencies = mutableListOf<FileUnit>()
-
-    fun getPackage(pkg: String): FileUnit? {
-        val alreadyLoaded = loadedDependencies.find { it.pkg == pkg }
-        if (alreadyLoaded != null) {
-            return alreadyLoaded
+    private val loadedDependencies by lazy {
+        val sorted = files.sortedBy { it.extension == "rol" }.filterNot {
+            it.extension == "rol" && it.resolveSibling("${it.nameWithoutExtension}.lua").exists()
         }
+        val unloadedDependencies = ArrayDeque(sorted)
+        val loaded = mutableListOf<FileUnit>()
         while (unloadedDependencies.isNotEmpty()) {
             val file = unloadedDependencies.removeFirst()
             val unit = getCompilationUnit(file)
             if (unit != null) {
-                loadedDependencies.add(unit)
-                if (unit.pkg == pkg) {
-                    return unit
-                }
+                loaded.add(unit)
             }
         }
-        return null
+        loaded
+    }
+    val usedDependencies = mutableListOf<FileUnit>()
+
+    fun getPackage(pkg: String): List<FileUnit> {
+        val loaded = loadedDependencies.filter { it.pkg == pkg }
+        if (loaded.isNotEmpty()) {
+            return loaded
+        }
+        return emptyList()
     }
 }
 

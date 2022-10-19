@@ -2,7 +2,9 @@ package io.github.seggan.rol
 
 import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
+import io.github.seggan.rol.meta.ArgUnit
 import io.github.seggan.rol.meta.FileUnit
+import io.github.seggan.rol.meta.FunctionUnit
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
@@ -27,8 +29,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
+import kotlin.io.path.exists
 import kotlin.io.path.extension
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.isSameFileAs
 import kotlin.io.path.nameWithoutExtension
+import kotlin.io.path.writeText
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
@@ -40,7 +46,7 @@ fun main(args: Array<String>) {
     parser.parse(args)
 
     val theFile = Path.of(file)
-    if (!Files.exists(theFile)) {
+    if (!theFile.exists()) {
         System.err.println("File $file does not exist")
         exitProcess(1)
     }
@@ -68,8 +74,10 @@ fun main(args: Array<String>) {
         files
     }
 
+    val compiledThis = theFile.resolveSibling("${theFile.nameWithoutExtension}.lua")
+
     DEPENDENCY_MANAGER = DependencyManager(files + include.map(Path::of).filter {
-        Files.isRegularFile(it) && it.extension in extensions
+        it.isRegularFile() && it.extension in extensions && !it.isSameFileAs(compiledThis)
     })
 
     var unit = getCompilationUnit(theFile) ?: return
@@ -78,7 +86,7 @@ fun main(args: Array<String>) {
     } + unit.text)
 
     val outputName = output ?: theFile.nameWithoutExtension
-    Files.writeString(theFile.resolveSibling("$outputName.lua"), unit.serialize())
+    theFile.resolveSibling("$outputName.lua").writeText(unit.serialize())
     Files.newOutputStream(theFile.resolveSibling("rol_core.lua")).use { stream ->
         FileUnit::class.java.getResourceAsStream("/rol_core.lua")!!.use {
             it.copyTo(stream)
@@ -120,9 +128,19 @@ fun compile(path: Path): FileUnit {
 
     val transpiler = Transpiler(DEPENDENCY_MANAGER, imports)
     val transpiledAst = transpiler.start(typedAst)
-    val functions = transpiler.functions.filterKeys { it is TFunctionDeclaration }.mapKeys { it.key as TFunctionDeclaration }
-
-    return FileUnit(path.nameWithoutExtension, pkg, setOf(), setOf(), transpiledAst.transpile())
+    val functions =
+        transpiler.functions.filterKeys { it is TFunctionDeclaration }.mapKeys { it.key as TFunctionDeclaration }
+    return FileUnit(
+        path.nameWithoutExtension,
+        pkg,
+        functions.map {
+            FunctionUnit(it.key.name, it.value, it.key.args.map { a ->
+                ArgUnit(a.name, a.type)
+            }, it.key.type)
+        }.toSet(),
+        setOf(),
+        transpiledAst.transpile()
+    )
 }
 
 private class ErrCatcher : OutputStream() {

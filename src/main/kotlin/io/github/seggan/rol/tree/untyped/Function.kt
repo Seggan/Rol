@@ -1,8 +1,8 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 
 sealed class UFn(val name: String, val args: List<Argument>, children: List<UNode> = emptyList(), location: Location) :
@@ -11,7 +11,7 @@ sealed class UFn(val name: String, val args: List<Argument>, children: List<UNod
 class UFunctionDeclaration(
     name: String,
     args: List<Argument>,
-    val access: AccessModifier,
+    val modifiers: Modifiers,
     val body: UStatements,
     val type: Type,
     location: Location
