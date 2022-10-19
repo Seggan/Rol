@@ -1,4 +1,4 @@
-package io.github.seggan.rol.tree
+package io.github.seggan.rol.tree.common
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval

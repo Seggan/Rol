@@ -1,6 +1,6 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
 
 sealed class UControlStatement(children: List<UNode>, location: Location) : UNode(children, location)
 

@@ -1,0 +1,7 @@
+package rol.lang
+
+extern print(s) is luaPrint
+
+fun print(s: dyn?) {
+    luaPrint(s)
+}

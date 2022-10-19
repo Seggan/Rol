@@ -1,6 +1,7 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 import java.math.BigDecimal
 
 sealed class TLiteral<T>(val value: T, type: Type, location: Location) : TExpression(type, listOf(), location)

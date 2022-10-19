@@ -3,6 +3,7 @@ package io.github.seggan.rol.postype
 import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.meta.FunctionUnit
+import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
 import io.github.seggan.rol.tree.lua.LBinaryExpression
 import io.github.seggan.rol.tree.lua.LFunctionCall
@@ -34,7 +35,6 @@ import io.github.seggan.rol.tree.typed.TString
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
-import io.github.seggan.rol.tree.typed.Type
 import io.github.seggan.rol.tree.typed.TypedTreeVisitor
 import java.util.EnumSet
 
@@ -43,7 +43,7 @@ class Transpiler(
     private val packages: Set<String>,
 ) : TypedTreeVisitor<LNode>() {
 
-    private val functions = mutableMapOf<TFn, String>()
+    val functions = mutableMapOf<TFn, String>()
 
     private var indent = 0
 

@@ -7,8 +7,13 @@ import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
+import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
+import kotlinx.cli.multiple
+import kotlinx.cli.required
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
@@ -26,14 +31,31 @@ import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
 import kotlin.system.exitProcess
 
-fun main() {
-    val file = Path.of("rolbuild/test.rol")
-    val path = System.getenv("ROL_HOME")?.split(File.pathSeparatorChar)?.map(Path::of) ?: emptyList()
+fun main(args: Array<String>) {
+    val parser = ArgParser("rol")
+    val file by parser.option(ArgType.String, shortName = "f", description = "File(s) to compile").required()
+    val output by parser.option(ArgType.String, shortName = "o", description = "Output directory")
+    val include by parser.option(ArgType.String, shortName = "i", description = "Include files/directories").multiple()
+
+    parser.parse(args)
+
+    val theFile = Path.of(file)
+    if (!Files.exists(theFile)) {
+        System.err.println("File $file does not exist")
+        exitProcess(1)
+    }
+    val path = System.getenv("ROL_HOME")?.split(File.pathSeparatorChar)?.map(Path::of)?.toMutableList()
+        ?: mutableListOf()
+    path.add(theFile.parent)
+    val includePaths = include.map(Path::of).filter(Files::exists)
+    path.addAll(includePaths.filter(Files::isDirectory))
+
+    val extensions = setOf("rol", "lua")
     val files = path.flatMap { p ->
         val files = mutableListOf<Path>()
         Files.walkFileTree(p, object : SimpleFileVisitor<Path>() {
             override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                if (file.extension == "rol" || file.extension == "lua") {
+                if (file.extension in extensions) {
                     files.add(file)
                 }
                 return FileVisitResult.CONTINUE
@@ -45,10 +67,19 @@ fun main() {
         })
         files
     }
-    DEPENDENCY_MANAGER = DependencyManager(files)
-    val unit = getCompilationUnit(file) ?: return
-    Files.writeString(file.resolveSibling("${file.nameWithoutExtension}.lua"), unit.serialize())
-    Files.newOutputStream(file.resolveSibling("rol_core.lua")).use { stream ->
+
+    DEPENDENCY_MANAGER = DependencyManager(files + include.map(Path::of).filter {
+        Files.isRegularFile(it) && it.extension in extensions
+    })
+
+    var unit = getCompilationUnit(theFile) ?: return
+    unit = unit.copy(text = DEPENDENCY_MANAGER.usedDependencies.joinToString {
+        "require \"${it.name}\"\n"
+    } + unit.text)
+
+    val outputName = output ?: theFile.nameWithoutExtension
+    Files.writeString(theFile.resolveSibling("$outputName.lua"), unit.serialize())
+    Files.newOutputStream(theFile.resolveSibling("rol_core.lua")).use { stream ->
         FileUnit::class.java.getResourceAsStream("/rol_core.lua")!!.use {
             it.copyTo(stream)
         }
@@ -80,14 +111,17 @@ fun compile(path: Path): FileUnit {
     )
 
     val ast = parsed.accept(RolVisitor()) as UStatements
-    println(ast)
     var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, imports).typeAst(ast)
     var folder: ConstantFolder
     do {
         folder = ConstantFolder()
         typedAst = folder.start(typedAst)
     } while (folder.changed)
-    val transpiledAst = Transpiler(DEPENDENCY_MANAGER, imports).start(typedAst)
+
+    val transpiler = Transpiler(DEPENDENCY_MANAGER, imports)
+    val transpiledAst = transpiler.start(typedAst)
+    val functions = transpiler.functions.filterKeys { it is TFunctionDeclaration }.mapKeys { it.key as TFunctionDeclaration }
+
     return FileUnit(path.nameWithoutExtension, pkg, setOf(), setOf(), transpiledAst.transpile())
 }
 

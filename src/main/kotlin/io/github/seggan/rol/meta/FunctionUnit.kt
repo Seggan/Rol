@@ -1,8 +1,8 @@
 package io.github.seggan.rol.meta
 
 import com.beust.klaxon.JsonObject
+import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.typed.TExpression
-import io.github.seggan.rol.tree.typed.Type
 import io.github.seggan.rol.tree.untyped.UFunctionCall
 
 data class FunctionUnit(val name: String, val mangled: String, val args: List<ArgUnit>, val returnType: Type) :

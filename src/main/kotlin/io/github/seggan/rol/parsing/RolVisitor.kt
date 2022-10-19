@@ -2,12 +2,13 @@ package io.github.seggan.rol.parsing
 
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.antlr.RolParserBaseVisitor
-import io.github.seggan.rol.tree.AccessModifier
-import io.github.seggan.rol.tree.Location
-import io.github.seggan.rol.tree.location
+import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Argument
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.location
 import io.github.seggan.rol.tree.untyped.AssignType
 import io.github.seggan.rol.tree.untyped.UAccess
-import io.github.seggan.rol.tree.untyped.UArgument
 import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
@@ -26,7 +27,6 @@ import io.github.seggan.rol.tree.untyped.UPrefixOperator
 import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
-import io.github.seggan.rol.tree.untyped.UTypename
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
@@ -109,7 +109,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         val def = UVarDef(
             name,
             ctx.CONST() != null,
-            if (ctx.type() == null) null else UTypename.parse(ctx.type()),
+            if (ctx.type() == null) null else Type.parse(ctx.type().text),
             AccessModifier.parse(ctx.accessModifier()),
             ctx.location
         )
@@ -147,10 +147,10 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UNode {
         return UFunctionDeclaration(
             ctx.identifier().text,
-            ctx.argList().arg().map { UArgument(it.identifier().text, UTypename.parse(it.type())!!, it.location) },
+            ctx.argList().arg().map { Argument(it.identifier().text, Type.parse(it.type().text), it.location) },
             AccessModifier.parse(ctx.accessModifier()),
             visit(ctx.block()).asStatements(),
-            UTypename.parse(ctx.type()),
+            if (ctx.type() == null) Type.VOID else Type.parse(ctx.type().text),
             ctx.location
         )
     }
@@ -162,9 +162,9 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             if (ctx.name == null) name else ctx.name.text,
             name,
             ctx.noTypeArgList().identifier().map {
-                UArgument(
+                Argument(
                     it.text,
-                    UTypename("dyn?", false, it.location),
+                    Type.ANY,
                     it.location
                 )
             },

@@ -1,7 +1,8 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.AccessModifier
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
 sealed class TVar(val name: String, type: Type, children: List<TNode>, location: Location) : TNode(type, children, location)
 

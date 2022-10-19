@@ -57,10 +57,6 @@ open class TypedTreeVisitor<R> {
         return defaultValue(declaration)
     }
 
-    open fun visitArgument(arg: TArgument): R {
-        return defaultValue(arg)
-    }
-
     open fun visitFunctionCall(call: TFunctionCall): R {
         call.args.forEach(::visit)
         return defaultValue(call)

@@ -2,7 +2,7 @@ package io.github.seggan.rol.meta
 
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Klaxon
-import io.github.seggan.rol.tree.typed.Type
+import io.github.seggan.rol.tree.common.Type
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -11,7 +11,7 @@ import kotlin.io.path.readText
 
 sealed interface CompilationUnit<D> {
     companion object {
-        val VERSION = 1
+        const val VERSION = 1
     }
 
     fun serialize(): D

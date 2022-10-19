@@ -1,19 +1,19 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.AccessModifier
-import io.github.seggan.rol.tree.Argument
-import io.github.seggan.rol.tree.Location
-import io.github.seggan.rol.tree.typed.Type
+import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Argument
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
-sealed class UFn(val name: String, val args: List<UArgument>, children: List<UNode> = emptyList(), location: Location) :
+sealed class UFn(val name: String, val args: List<Argument>, children: List<UNode> = emptyList(), location: Location) :
     UNode(children, location)
 
 class UFunctionDeclaration(
     name: String,
-    args: List<UArgument>,
+    args: List<Argument>,
     val access: AccessModifier,
     val body: UStatements,
-    val type: UTypename?,
+    val type: Type,
     location: Location
 ) :
     UFn(name, args, listOf(body), location) {
@@ -26,19 +26,10 @@ class UFunctionDeclaration(
     }
 }
 
-class UExternDeclaration(name: String, val nativeName: String, args: List<UArgument>, location: Location) :
+class UExternDeclaration(name: String, val nativeName: String, args: List<Argument>, location: Location) :
     UFn(name, args, listOf(), location) {
     override fun toString(): String {
         return "ExternDeclaration($name, $nativeName, $args)"
-    }
-}
-
-class UArgument(name: String, type: UTypename, location: Location) : UVar(name, listOf(), location), Argument {
-
-    override val type: Type = type.toType()
-
-    override fun toString(): String {
-        return "Argument($name, $type)"
     }
 }
 

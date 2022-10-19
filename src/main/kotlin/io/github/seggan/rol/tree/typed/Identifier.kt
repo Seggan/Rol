@@ -1,6 +1,7 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
 sealed class TIdentifier(val name: String, type: Type, children: List<TExpression>, location: Location) :
     TExpression(type, children, location)

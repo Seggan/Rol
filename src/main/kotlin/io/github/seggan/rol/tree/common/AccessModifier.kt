@@ -1,4 +1,4 @@
-package io.github.seggan.rol.tree
+package io.github.seggan.rol.tree.common
 
 import io.github.seggan.rol.antlr.RolParser
 

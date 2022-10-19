@@ -1,7 +1,7 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.Location
-import io.github.seggan.rol.tree.Reference
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Reference
 
 sealed class UIdentifier(val name: String, children: List<UNode>, location: Location) : UExpression(children, location)
 

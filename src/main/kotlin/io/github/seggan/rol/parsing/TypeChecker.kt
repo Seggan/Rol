@@ -2,8 +2,8 @@ package io.github.seggan.rol.parsing
 
 import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
-import io.github.seggan.rol.tree.AccessModifier
-import io.github.seggan.rol.tree.typed.TArgument
+import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
@@ -24,7 +24,6 @@ import io.github.seggan.rol.tree.typed.TString
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
-import io.github.seggan.rol.tree.typed.Type
 import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
@@ -69,8 +68,8 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     }
 
     private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
-        val args = node.args.map { TArgument(it.name, it.type, it.location) }
-        val type = node.type?.toType() ?: Type.VOID
+        val args = node.args
+        val type = node.type
         return TFunctionDeclaration(
             node.name,
             args,
@@ -85,7 +84,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         return TExternDeclaration(
             declaration.name,
             declaration.nativeName,
-            declaration.args.map { TArgument(it.name, Type.ANY, it.location) },
+            declaration.args,
             declaration.location
         )
     }
@@ -194,9 +193,9 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     }
 
     private fun typeVariableDeclaration(decl: UVarDef): TVarDef {
-        val typename = decl.type
+        val type = decl.type
         val name = decl.name
-        if (typename == null) {
+        if (type == null) {
             // we have to infer the type
             val first = currentFrame.statements
                 .shallowFlatten()
@@ -213,7 +212,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 )
             }
         } else {
-            return TVarDef(name, typename.toType(), decl.access, decl.location)
+            return TVarDef(name, type, decl.access, decl.location)
         }
     }
 
@@ -245,6 +244,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             val dep = dependencyManager.getPackage(import) ?: continue
             for (func in dep.functions.filter { it.name == name }) {
                 if (func.matches(call, args)) {
+                    dependencyManager.usedDependencies.add(dep)
                     return TFunctionCall(name, args, func.returnType, call.location)
                 }
             }

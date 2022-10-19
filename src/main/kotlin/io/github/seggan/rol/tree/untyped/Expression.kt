@@ -1,6 +1,6 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TPostfixOperator
 import io.github.seggan.rol.tree.typed.TPrefixOperator

@@ -4,12 +4,15 @@ import java.nio.file.Path as JPath
 
 plugins {
     kotlin("jvm") version "1.7.10"
+    application
     id("com.github.johnrengelman.shadow") version "7.1.2"
     id("antlr")
 }
 
 group = "io.github.seggan"
 version = "1.0-SNAPSHOT"
+
+val jarName = "Rol-$version.jar"
 
 repositories {
     mavenCentral()
@@ -19,8 +22,13 @@ dependencies {
     antlr("org.antlr:antlr4:4.11.1")
 
     implementation("com.beust:klaxon:5.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
 
     testImplementation(kotlin("test"))
+}
+
+application {
+    mainClass.set("io.github.seggan.rol.MainKt")
 }
 
 tasks.test {
@@ -54,4 +62,24 @@ tasks.generateGrammarSource {
         "-package", "io.github.seggan.rol.antlr"
     )
     outputDirectory = fullPath.toFile()
+}
+
+tasks.shadowJar {
+    archiveFileName.set(jarName)
+}
+
+tasks.register("compileStdlib") {
+    dependsOn(tasks.shadowJar)
+    doLast {
+        val compiler = JPath.of("$buildDir/libs/$jarName")
+        val stdlib = JPath.of("$projectDir/src/main/rol")
+        Files.walk(stdlib).forEach { file ->
+            if (file.fileName.toString().endsWith(".rol")) {
+                javaexec {
+                    classpath = files(compiler)
+                    args = listOf("-f", file.toAbsolutePath().toString())
+                }
+            }
+        }
+    }
 }

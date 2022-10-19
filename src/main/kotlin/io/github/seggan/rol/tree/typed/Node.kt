@@ -1,6 +1,7 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
 sealed class TNode(val type: Type, val children: List<TNode>, val location: Location) {
     abstract fun <T> accept(visitor: TypedTreeVisitor<T>): T

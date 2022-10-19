@@ -1,4 +1,4 @@
-package io.github.seggan.rol.tree.typed
+package io.github.seggan.rol.tree.common
 
 data class Type(val name: String, val nullable: Boolean = false) {
 

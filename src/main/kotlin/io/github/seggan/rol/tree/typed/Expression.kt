@@ -1,6 +1,7 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
 sealed class TExpression(type: Type, val subexpressions: List<TExpression>, location: Location) :
     TNode(type, subexpressions, location)

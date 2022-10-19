@@ -1,7 +1,7 @@
 package io.github.seggan.rol
 
-import io.github.seggan.rol.tree.Location
-import io.github.seggan.rol.tree.typed.Type
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
 object Errors {
 

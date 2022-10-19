@@ -1,6 +1,6 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.Location
 import java.math.BigDecimal
 
 sealed class ULiteral(location: Location) : UExpression(listOf(), location)

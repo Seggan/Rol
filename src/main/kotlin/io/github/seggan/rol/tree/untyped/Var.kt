@@ -1,12 +1,13 @@
 package io.github.seggan.rol.tree.untyped
 
-import io.github.seggan.rol.tree.AccessModifier
-import io.github.seggan.rol.tree.Location
-import io.github.seggan.rol.tree.Reference
+import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Reference
+import io.github.seggan.rol.tree.common.Type
 
 sealed class UVar(val name: String, children: List<UNode>, location: Location) : UNode(children, location)
 
-class UVarDef(name: String, val constant: Boolean, val type: UTypename?, val access: AccessModifier, location: Location) :
+class UVarDef(name: String, val constant: Boolean, val type: Type?, val access: AccessModifier, location: Location) :
     UVar(name, listOf(), location) {
     override fun toString(): String {
         return "VarDef($access, $name, constant=$constant, type=$type)"

@@ -1,10 +1,11 @@
 package io.github.seggan.rol.tree.typed
 
-import io.github.seggan.rol.tree.AccessModifier
-import io.github.seggan.rol.tree.Argument
-import io.github.seggan.rol.tree.Location
+import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Argument
+import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
-sealed class TFn(val name: String, val args: List<TArgument>, type: Type, children: List<TNode>, location: Location) :
+sealed class TFn(val name: String, val args: List<Argument>, type: Type, children: List<TNode>, location: Location) :
     TNode(type, children, location) {
 
     fun matches(name: String, args: List<TNode>): Boolean {
@@ -16,7 +17,7 @@ sealed class TFn(val name: String, val args: List<TArgument>, type: Type, childr
 
 class TFunctionDeclaration(
     name: String,
-    args: List<TArgument>,
+    args: List<Argument>,
     type: Type,
     val access: AccessModifier,
     val body: TStatements,
@@ -27,16 +28,10 @@ class TFunctionDeclaration(
     }
 }
 
-class TExternDeclaration(name: String, val nativeName: String, args: List<TArgument>, location: Location) :
+class TExternDeclaration(name: String, val nativeName: String, args: List<Argument>, location: Location) :
     TFn(name, args, Type.ANY, listOf(), location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitExternDeclaration(this)
-    }
-}
-
-class TArgument(name: String, type: Type, location: Location) : TVar(name, type, listOf(), location), Argument {
-    override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
-        return visitor.visitArgument(this)
     }
 }
 
