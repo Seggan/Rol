@@ -4,6 +4,7 @@ import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
+import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TPostfixExpression
 import io.github.seggan.rol.tree.typed.TPrefixExpression
@@ -79,5 +80,14 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
 
     override fun visitReturn(ret: TReturn): TNode {
         return TReturn(if (ret.value == null) null else visit(ret.value) as TExpression, ret.location)
+    }
+
+    override fun visitIfStatement(statement: TIfStatement): TNode {
+        return TIfStatement(
+            visit(statement.condition) as TExpression,
+            visit(statement.ifBody) as TStatements,
+            if (statement.elseBody == null) null else visit(statement.elseBody) as TStatements,
+            statement.location
+        )
     }
 }

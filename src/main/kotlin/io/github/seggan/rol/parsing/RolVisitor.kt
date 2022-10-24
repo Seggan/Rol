@@ -109,7 +109,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         val name = ctx.identifier().text
         val def = UVarDef(
             name,
-            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null, false),
+            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
             if (ctx.type() == null) null else Type.parse(ctx.type().text),
             ctx.location
         )
@@ -148,7 +148,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return UFunctionDeclaration(
             ctx.identifier().text,
             ctx.argList().arg().map { Argument(it.identifier().text, Type.parse(it.type().text), it.location) },
-            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null, ctx.INST() != null),
+            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
             visit(ctx.block()).asStatements(),
             if (ctx.type() == null) Type.VOID else Type.parse(ctx.type().text),
             ctx.location

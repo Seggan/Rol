@@ -6,8 +6,10 @@ import io.github.seggan.rol.meta.FunctionUnit
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
 import io.github.seggan.rol.tree.lua.LBinaryExpression
+import io.github.seggan.rol.tree.lua.LExpression
 import io.github.seggan.rol.tree.lua.LFunctionCall
 import io.github.seggan.rol.tree.lua.LFunctionDefinition
+import io.github.seggan.rol.tree.lua.LIfStatement
 import io.github.seggan.rol.tree.lua.LLiteral
 import io.github.seggan.rol.tree.lua.LNode
 import io.github.seggan.rol.tree.lua.LNop
@@ -23,6 +25,7 @@ import io.github.seggan.rol.tree.typed.TExternDeclaration
 import io.github.seggan.rol.tree.typed.TFn
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
+import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TNull
 import io.github.seggan.rol.tree.typed.TNumber
@@ -91,7 +94,9 @@ class Transpiler(
 
     override fun visitPostfixExpression(expression: TPostfixExpression): LNode {
         if (expression.operator == TPostfixOperator.ASSERT_NON_NULL) {
-            return LFunctionCall("assertNonNull", visit(expression.left), LString(expression.location.toString()))
+            return LFunctionCall("assertNonNull", visit(expression.left), LString(
+                expression.location.toString().replace("\"", "\\\"")
+            ))
         }
         return super.visitPostfixExpression(expression)
     }
@@ -160,6 +165,14 @@ class Transpiler(
     override fun visitReturn(ret: TReturn): LNode {
         return LReturn(if (ret.value == null) null else visit(ret.value))
     }
+
+    override fun visitIfStatement(statement: TIfStatement): LNode {
+        return LIfStatement(
+            visit(statement.condition) as LExpression,
+            visit(statement.ifBody).toStatements().withIndent(++indent),
+            if (statement.elseBody == null) null else visit(statement.elseBody).toStatements().withIndent(indent)
+        ).also { indent-- }
+    }
 }
 
 private val bitwiseOps = EnumSet.of(
@@ -173,7 +186,7 @@ private val bitwiseOps = EnumSet.of(
 private val regex = "\\W".toRegex()
 
 private fun mangle(name: String, type: Type): String {
-    val mangled = name + type.hashCode().toString(16) + name.hashCode().toString(16)
+    val mangled = name + type.hashCode().toString(16).take(6) + name.hashCode().toString(16).take(6)
     return regex.replace(mangled, "_")
 }
 

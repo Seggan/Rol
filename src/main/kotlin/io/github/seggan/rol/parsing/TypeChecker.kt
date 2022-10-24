@@ -13,6 +13,7 @@ import io.github.seggan.rol.tree.typed.TExternDeclaration
 import io.github.seggan.rol.tree.typed.TFn
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
+import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TLiteral
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TNull
@@ -32,6 +33,7 @@ import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExternDeclaration
 import io.github.seggan.rol.tree.untyped.UFunctionCall
 import io.github.seggan.rol.tree.untyped.UFunctionDeclaration
+import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULiteral
 import io.github.seggan.rol.tree.untyped.UNode
 import io.github.seggan.rol.tree.untyped.UNullLiteral
@@ -64,8 +66,19 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             is UExternDeclaration -> typeExternDeclaration(node)
             is UFunctionDeclaration -> typeFunctionDeclaration(node)
             is UReturn -> typeReturn(node)
+            is UIfStatement -> typeIfStatement(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
         }
+    }
+
+    private fun typeIfStatement(node: UIfStatement): TIfStatement {
+        val condition = typeExpression(node.cond)
+        if (!Type.BOOLEAN.isAssignableFrom(condition.type)) {
+            Errors.typeMismatch(Type.BOOLEAN, condition.type, condition.location)
+        }
+        val body = typeStatements(node.ifTrue)
+        val elseBody = node.ifFalse?.let { typeStatements(it) }
+        return TIfStatement(condition, body, elseBody, node.location)
     }
 
     private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
@@ -78,8 +91,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             node.modifiers,
             typeStatements(node.body, args.map { TVarDef(it.name, it.type, Modifiers(
                 AccessModifier.PRIVATE,
-                const = true,
-                inst = false
+                const = true
             ), it.location) }, type),
             node.location
         )
@@ -96,8 +108,8 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
 
     private fun typeReturn(node: UReturn): TNode {
         val statement = TReturn(if (node.value == null) null else typeExpression(node.value), node.location)
-        if (statement.type != currentFrame.expectedReturn) {
-            Errors.typeMismatch(currentFrame.expectedReturn, statement.type, statement.location)
+        if (!currentFrame.returnType.isAssignableFrom(statement.type)) {
+            Errors.typeMismatch(currentFrame.returnType, statement.type, statement.location)
         }
         return statement
     }
@@ -254,13 +266,14 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 }
             }
         }
-        Errors.undefinedReference(name, call.location)
+        val errorName = name + args.joinToString(", ", "(", ")") { it.type.name }
+        Errors.undefinedReference(errorName, call.location)
     }
 
     private fun typeStatements(
         statements: UStatements,
         extraVars: List<TVarDef> = emptyList(),
-        returnType: Type = Type.VOID
+        returnType: Type = if (stack.isEmpty()) Type.VOID else currentFrame.returnType
     ): TStatements {
         val flat = statements.shallowFlatten()
         typedFunctions.addAll(flat.filterIsInstance<UExternDeclaration>().map(::typeExternDeclaration))
@@ -283,4 +296,4 @@ private fun checkVoid(expr: TExpression): TExpression {
     return expr
 }
 
-private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements, val expectedReturn: Type)
+private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements, val returnType: Type)

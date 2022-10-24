@@ -81,4 +81,13 @@ open class TypedTreeVisitor<R> {
         }
         return defaultValue(ret)
     }
+
+    open fun visitIfStatement(statement: TIfStatement): R {
+        visit(statement.condition)
+        visit(statement.ifBody)
+        if (statement.elseBody != null) {
+            visit(statement.elseBody)
+        }
+        return defaultValue(statement)
+    }
 }

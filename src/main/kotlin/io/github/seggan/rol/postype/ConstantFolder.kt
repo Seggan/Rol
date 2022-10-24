@@ -17,7 +17,7 @@ class ConstantFolder : Transformer() {
     var changed = false
 
     override fun visitPostfixExpression(expression: TPostfixExpression): TNode {
-        if (expression.operator == TPostfixOperator.ASSERT_NON_NULL && !expression.type.nullable) {
+        if (expression.operator == TPostfixOperator.ASSERT_NON_NULL && !expression.left.type.nullable) {
             changed = true
             return expression.left
         }

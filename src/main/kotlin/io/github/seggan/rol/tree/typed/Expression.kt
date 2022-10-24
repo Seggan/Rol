@@ -3,7 +3,7 @@ package io.github.seggan.rol.tree.typed
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
 
-sealed class TExpression(type: Type, val subexpressions: List<TExpression>, location: Location) :
+sealed class TExpression(type: Type, subexpressions: List<TExpression>, location: Location) :
     TNode(type, subexpressions, location)
 
 fun TNode.asExpr(): TExpression {
@@ -34,8 +34,8 @@ enum class TBinaryOperator(val op: String, val argType: Type, val resultType: Ty
     DIVIDE("/", Type.NUMBER),
     MODULO("%", Type.NUMBER),
 
-    EQUALS("==", Type.DYNAMIC, Type.BOOLEAN),
-    NOT_EQUALS("~=", Type.DYNAMIC, Type.BOOLEAN),
+    EQUALS("==", Type.ANY, Type.BOOLEAN),
+    NOT_EQUALS("~=", Type.ANY, Type.BOOLEAN),
     GREATER_THAN(">", Type.NUMBER, Type.BOOLEAN),
     LESS_THAN("<", Type.NUMBER, Type.BOOLEAN),
     GREATER_THAN_OR_EQUALS(">=", Type.NUMBER, Type.BOOLEAN),

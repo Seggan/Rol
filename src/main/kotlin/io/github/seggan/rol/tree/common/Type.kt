@@ -10,7 +10,9 @@ data class Type(val name: String, val nullable: Boolean = false) {
         // The three special types
         val DYNAMIC = Type("dyn")
         val ANY = Type("dyn", true)
-        val VOID = Type("")
+
+        // Special type for the absence of type
+        val VOID = Type("<nothing>")
 
         fun parse(str: String): Type {
             return Type(str.removeSuffix("?"), str.endsWith("?"))

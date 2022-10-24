@@ -56,12 +56,11 @@ fun main(args: Array<String>) {
     val includePaths = include.map(Path::of).filter(Files::exists)
     path.addAll(includePaths.filter(Files::isDirectory))
 
-    val extensions = setOf("rol", "lua")
     val files = path.flatMap { p ->
         val files = mutableListOf<Path>()
         Files.walkFileTree(p, object : SimpleFileVisitor<Path>() {
             override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                if (file.extension in extensions) {
+                if (file.extension == "lua") {
                     files.add(file)
                 }
                 return FileVisitResult.CONTINUE
@@ -77,11 +76,11 @@ fun main(args: Array<String>) {
     val compiledThis = theFile.resolveSibling("${theFile.nameWithoutExtension}.lua")
 
     DEPENDENCY_MANAGER = DependencyManager(files + include.map(Path::of).filter {
-        it.isRegularFile() && it.extension in extensions && !it.isSameFileAs(compiledThis)
+        it.isRegularFile() && it.extension == "lua" && !it.isSameFileAs(compiledThis)
     })
 
-    var unit = getCompilationUnit(theFile) ?: return
-    unit = unit.copy(text = DEPENDENCY_MANAGER.usedDependencies.joinToString {
+    var unit = compile(theFile)
+    unit = unit.copy(text = DEPENDENCY_MANAGER.usedDependencies.joinToString("") {
         "require \"${it.name}\"\n"
     } + unit.text)
 
@@ -95,6 +94,7 @@ fun main(args: Array<String>) {
 }
 
 private lateinit var DEPENDENCY_MANAGER: DependencyManager
+lateinit var CURRENT_FILE: String
 
 fun compile(path: Path): FileUnit {
     // temporarily replace STDERR to catch ANTLR errors
@@ -104,6 +104,8 @@ fun compile(path: Path): FileUnit {
 
     val stream = CommonTokenStream(RolLexer(CharStreams.fromPath(path, StandardCharsets.UTF_8)))
     val parsed = RolParser(stream).file()
+
+    CURRENT_FILE = path.fileName.toString()
 
     System.setErr(stderr)
     newErr.buffer.forEach(System.err::write)

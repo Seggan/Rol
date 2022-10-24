@@ -6,8 +6,14 @@ sealed class LNode {
 }
 
 class LStatements(private val statements: List<LNode>, private val indent: Int = 0) : LNode() {
+    companion object {
+        private val NEWLINE = "\n".toRegex()
+    }
+
     override fun transpile(): String {
-        return statements.filter { it !is LNop }.joinToString("\n") { "\t".repeat(indent) + it.transpile() }
+        return statements.filter { it !is LNop }.flatMap { NEWLINE.split(it.transpile()) }.joinToString("\n") {
+            "\t".repeat(indent) + it
+        }
     }
 
     fun withIndent(indent: Int) = LStatements(statements, indent)
@@ -44,13 +50,15 @@ class LFunctionCall(val name: String, private val args: List<LNode>) : LNode() {
     }
 }
 
-class LBinaryExpression(private val left: LNode, private val operator: String, val right: LNode) : LNode() {
+sealed class LExpression : LNode()
+
+class LBinaryExpression(private val left: LNode, private val operator: String, val right: LNode) : LExpression() {
     override fun transpile(): String {
         return "(${left.transpile()} $operator ${right.transpile()})"
     }
 }
 
-class LUnaryExpression(private val operator: String, private val value: LNode) : LNode() {
+class LUnaryExpression(private val operator: String, private val value: LNode) : LExpression() {
     override fun transpile(): String {
         return "($operator${value.transpile()})"
     }

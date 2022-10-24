@@ -3,5 +3,19 @@ package rol.lang
 extern print(s) is luaPrint
 
 fun print(s: dyn?) {
-    luaPrint(s)
+    if (s == null) {
+        luaPrint("null")
+    } else {
+        luaPrint(s)
+    }
+}
+
+extern io.read(p) is luaRead
+
+fun readLine(): String {
+    return luaRead("*l")!
+}
+
+fun readNumber(): Num {
+    return luaRead("*n")!
 }

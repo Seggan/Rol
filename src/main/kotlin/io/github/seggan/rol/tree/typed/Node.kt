@@ -7,7 +7,7 @@ sealed class TNode(val type: Type, val children: List<TNode>, val location: Loca
     abstract fun <T> accept(visitor: TypedTreeVisitor<T>): T
 }
 
-class TStatements(children: List<TNode>, location: Location) : TNode(Type.DYNAMIC, children, location) {
+class TStatements(children: List<TNode>, location: Location) : TNode(Type.VOID, children, location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitStatements(this)
     }
