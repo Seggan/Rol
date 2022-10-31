@@ -121,7 +121,7 @@ fun compile(path: Path): FileUnit {
     )
 
     val ast = parsed.accept(RolVisitor()) as UStatements
-    var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, imports).typeAst(ast)
+    var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, imports, pkg).typeAst(ast)
     var folder: ConstantFolder
     do {
         folder = ConstantFolder()
@@ -136,7 +136,7 @@ fun compile(path: Path): FileUnit {
         path.nameWithoutExtension,
         pkg,
         functions.map {
-            FunctionUnit(it.key.name, it.value, it.key.args.map { a ->
+            FunctionUnit(it.key.name.name, it.value, it.key.args.map { a ->
                 ArgUnit(a.name, a.type)
             }, it.key.type)
         }.toSet(),

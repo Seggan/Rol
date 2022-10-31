@@ -1,5 +1,6 @@
 package io.github.seggan.rol.tree.untyped
 
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Reference
 
@@ -11,8 +12,8 @@ class UVariableAccess(name: String, location: Location) : UIdentifier(name, empt
     }
 }
 
-class UFunctionCall(name: String, val args: List<UExpression>, location: Location) :
-    UIdentifier(name, args, location), Reference {
+class UFunctionCall(val fname: Identifier, val args: List<UExpression>, location: Location) :
+    UIdentifier(fname.name, args, location), Reference {
     override fun toString(): String {
         return "FunctionCall($name, ${args.joinToString(", ")})"
     }

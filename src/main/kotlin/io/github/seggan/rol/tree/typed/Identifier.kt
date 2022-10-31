@@ -1,5 +1,6 @@
 package io.github.seggan.rol.tree.typed
 
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
 
@@ -12,8 +13,8 @@ class TVariableAccess(name: String, type: Type, location: Location) : TIdentifie
     }
 }
 
-class TFunctionCall(name: String, val args: List<TExpression>, returnType: Type, location: Location) :
-    TIdentifier(name, returnType, args, location) {
+class TFunctionCall(val fname: Identifier, val args: List<TExpression>, returnType: Type, location: Location) :
+    TIdentifier(fname.name, returnType, args, location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitFunctionCall(this)
     }

@@ -4,6 +4,7 @@ import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.antlr.RolParserBaseVisitor
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
@@ -72,7 +73,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.identifier() != null -> UAccess(visit(ctx.expression(0)).asExpr(), ctx.identifier().text, ctx.location)
             ctx.call() != null -> {
                 val call = visit(ctx.call()) as UFunctionCall
-                return UFunctionCall(call.name, listOf(visit(ctx.expression(0)).asExpr()) + call.args, call.location)
+                return UFunctionCall(call.fname, listOf(visit(ctx.expression(0)).asExpr()) + call.args, call.location)
             }
             else -> visitChildren(ctx)
         }
@@ -102,7 +103,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitCall(ctx: RolParser.CallContext): UNode {
-        return UFunctionCall(ctx.identifier().text, ctx.expression().map(::visit).map { it.asExpr() }, ctx.location)
+        return UFunctionCall(Identifier.fromNode(ctx.identifier()), ctx.expression().map(::visit).map { it.asExpr() }, ctx.location)
     }
 
     override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): UNode {
@@ -146,7 +147,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
 
     override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UNode {
         return UFunctionDeclaration(
-            ctx.identifier().text,
+            Identifier.fromNode(ctx.identifier()),
             ctx.argList().arg().map { Argument(it.identifier().text, Type.parse(it.type().text), it.location) },
             Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
             visit(ctx.block()).asStatements(),
@@ -159,7 +160,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         val name = ctx.identifier().dropLast(if (ctx.name == null) 0 else 1)
             .joinToString(".", transform = RolParser.IdentifierContext::getText)
         return UExternDeclaration(
-            if (ctx.name == null) name else ctx.name.text,
+            Identifier(if (ctx.name == null) name else ctx.name.name.text),
             name,
             ctx.noTypeArgList().identifier().map {
                 Argument(

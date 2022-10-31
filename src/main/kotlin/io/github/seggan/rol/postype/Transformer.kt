@@ -62,7 +62,7 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
 
     override fun visitFunctionCall(call: TFunctionCall): TNode {
         return TFunctionCall(
-            call.name,
+            call.fname,
             call.args.map(::visit).filterIsInstance<TExpression>(),
             call.type,
             call.location

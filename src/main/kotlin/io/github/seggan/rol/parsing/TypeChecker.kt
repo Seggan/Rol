@@ -47,7 +47,7 @@ import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
 
-class TypeChecker(private val dependencyManager: DependencyManager, private val imports: Set<String>) {
+class TypeChecker(private val dependencyManager: DependencyManager, private val imports: Set<String>, private val pkg: String) {
 
     private val stack = ArrayDeque<StackFrame>()
     private val currentFrame get() = stack.first()
@@ -85,7 +85,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         val args = node.args
         val type = node.type
         return TFunctionDeclaration(
-            node.name,
+            node.name.copy(pkg = pkg),
             args,
             type,
             node.modifiers,
@@ -99,7 +99,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
 
     private fun typeExternDeclaration(declaration: UExternDeclaration): TExternDeclaration {
         return TExternDeclaration(
-            declaration.name,
+            declaration.name.copy(pkg = pkg),
             declaration.nativeName,
             declaration.args,
             declaration.location
@@ -245,29 +245,44 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     }
 
     private fun typeFunctionCall(call: UFunctionCall): TFunctionCall {
-        val name = call.name
+        val name = call.fname
         val args = call.args.map { typeExpression(it) }
-        funcLoop@ for (func in typedFunctions.filter { it.name == name }) {
-            if (func.args.size == args.size) {
-                for (i in args.indices) {
-                    if (!func.args[i].type.isAssignableFrom(args[i].type)) {
-                        continue@funcLoop
+        if (name.pkg != null) {
+            val returnType = isIn(name.pkg, name.name, args.map(TNode::type))
+            if (returnType != null) {
+                return TFunctionCall(name.copy(pkg = name.pkg), args, returnType, call.location)
+            }
+        } else {
+            funcLoop@ for (func in typedFunctions.filter { it.name.name == name.name }) {
+                if (func.args.size == args.size) {
+                    for (i in args.indices) {
+                        if (!func.args[i].type.isAssignableFrom(args[i].type)) {
+                            continue@funcLoop
+                        }
                     }
+                    return TFunctionCall(name.copy(pkg = pkg), args, func.type, call.location)
                 }
-                return TFunctionCall(name, args, func.type, call.location)
             }
-        }
-        for (import in imports) {
-            for (dep in dependencyManager.getPackage(import)) {
-                val func = dep.findFunction(name, args.map(TNode::type))
-                if (func != null) {
-                    dependencyManager.usedDependencies.add(dep)
-                    return TFunctionCall(name, args, func.returnType, call.location)
+            for (import in imports) {
+                val returnType = isIn(import, name.name, args.map(TNode::type))
+                if (returnType != null) {
+                    return TFunctionCall(name.copy(pkg = import), args, returnType, call.location)
                 }
             }
         }
-        val errorName = name + args.joinToString(", ", "(", ")") { it.type.name }
+        val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.name }
         Errors.undefinedReference(errorName, call.location)
+    }
+
+    private fun isIn(pack: String, name: String, args: List<Type>): Type? {
+        for (dep in dependencyManager.getPackage(pack)) {
+            val func = dep.findFunction(name, args)
+            if (func != null) {
+                dependencyManager.usedDependencies.add(dep)
+                return func.returnType
+            }
+        }
+        return null
     }
 
     private fun typeStatements(

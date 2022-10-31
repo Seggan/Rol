@@ -128,3 +128,18 @@ function assertNonNull(value, location)
         return value
     end
 end
+
+-- END TYPE FUNCTIONS
+-- START TABLE FUNCTIONS
+
+function newTable()
+    return {}
+end
+
+function setTableValue(table, key, value)
+    table[key] = value
+end
+
+function getTableValue(table, value)
+    return table[value]
+end

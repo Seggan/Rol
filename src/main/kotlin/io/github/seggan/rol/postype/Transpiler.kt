@@ -57,7 +57,7 @@ class Transpiler(
             }
 
             override fun visitFunctionDeclaration(declaration: TFunctionDeclaration) {
-                val mangled = StringBuilder(mangle(declaration.name, declaration.type))
+                val mangled = StringBuilder(mangle(declaration.name.toString(), declaration.type))
                 for (arg in declaration.args) {
                     mangled.append(mangle(arg.name, arg.type))
                 }
@@ -94,9 +94,11 @@ class Transpiler(
 
     override fun visitPostfixExpression(expression: TPostfixExpression): LNode {
         if (expression.operator == TPostfixOperator.ASSERT_NON_NULL) {
-            return LFunctionCall("assertNonNull", visit(expression.left), LString(
-                expression.location.toString().replace("\"", "\\\"")
-            ))
+            return LFunctionCall(
+                "assertNonNull", visit(expression.left), LString(
+                    expression.location.toString().replace("\"", "\\\"")
+                )
+            )
         }
         return super.visitPostfixExpression(expression)
     }
@@ -131,18 +133,13 @@ class Transpiler(
             Errors.undefinedReference(call.name, call.location)
         } else if (available.isEmpty()) {
             var function: FunctionUnit? = null
-            for (import in imports) {
-                for (pkg in manager.getPackage(import)) {
-                    function = pkg.findFunction(call.name, call.args.map(TNode::type))
-                    if (function != null) {
-                        break
-                    }
+            for (pkg in manager.getPackage(call.fname.pkg!!)) {
+                function = pkg.findFunction(call.name, call.args.map(TNode::type))
+                if (function != null) {
+                    break
                 }
             }
-            if (function == null) {
-                Errors.undefinedReference(call.name, call.location)
-            }
-            name = function.mangled
+            name = function!!.mangled
         } else {
             name = available.entries.first().value
         }

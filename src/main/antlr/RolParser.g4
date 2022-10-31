@@ -155,11 +155,11 @@ type
 
 // identifier and soft keywords
 identifier
-    : Identifier
+    : (package SLASH)? name=(Identifier
     | CONST
     | INST
     | EXTERN
-    | INIT
+    | INIT)
     ;
 
 accessModifier
