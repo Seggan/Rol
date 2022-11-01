@@ -1,15 +1,11 @@
 package rol.lang
 
-extern tostring(x) is luaToString
-extern tonumber(x) is luaToNumber
-
-fun toString(x: dyn?): String {
-    if (x == null) {
+extern fun toString(x: dyn?): String = """
+    if x == nil then
         return "null"
-    }
-    return luaToString(x)!
-}
+    else
+        return tostring(x)
+    end
+"""
 
-fun toNumber(s: String): Num? {
-    return luaToNumber(s)
-}
+extern fun toNumber(x: String): Num = "return tonumber(x)"

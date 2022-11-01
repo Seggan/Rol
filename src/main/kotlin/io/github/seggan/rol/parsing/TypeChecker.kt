@@ -100,8 +100,10 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
     private fun typeExternDeclaration(declaration: UExternDeclaration): TExternDeclaration {
         return TExternDeclaration(
             declaration.name.copy(pkg = pkg),
-            declaration.nativeName,
             declaration.args,
+            declaration.modifiers,
+            declaration.body,
+            declaration.type,
             declaration.location
         )
     }

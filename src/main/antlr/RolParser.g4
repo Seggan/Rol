@@ -64,11 +64,7 @@ constructorDeclaration
     ;
 
 externDeclaration
-    : EXTERN NL* identifier (DOT identifier)* NL* noTypeArgList NL* (COLON NL* DYN)? (IS name=identifier)?
-    ;
-
-noTypeArgList
-    : LPAREN NL* (identifier (NL* COMMA NL* identifier)*)? NL* RPAREN
+    : accessModifier? NL* EXTERN NL* FUN NL* identifier NL* argList NL* (COLON NL* type)? NL* ASSIGN NL* string
     ;
 
 expression
@@ -93,7 +89,7 @@ primary
     : LPAREN NL* expression NL* RPAREN
     | call
     | number
-    | String
+    | string
     | Boolean
     | Null
     | identifier
@@ -164,4 +160,8 @@ identifier
 
 accessModifier
     : PRIVATE | PACKAGE
+    ;
+
+string
+    : String | MultilineString
     ;

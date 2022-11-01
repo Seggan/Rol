@@ -1,21 +1,17 @@
 package rol.lang
 
-extern print(s) is luaPrint
+extern fun print(s: dyn?) = """
+    if s == nil then
+        print("null")
+    else
+        print(s)
+    end
+"""
 
-fun print(s: dyn?) {
-    if (s == null) {
-        luaPrint("null")
-    } else {
-        luaPrint(s)
-    }
-}
+extern fun readLine(): String = """
+    return io.read("*l")
+"""
 
-extern io.read(p) is luaRead
-
-fun readLine(): String {
-    return luaRead("*l")!
-}
-
-fun readNumber(): Num {
-    return luaRead("*n")!
-}
+extern fun readNumber(): Num = """
+    return io.read("*n")
+"""

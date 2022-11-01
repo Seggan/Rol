@@ -95,7 +95,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         val text = ctx.text
         return when {
             ctx.Boolean() != null -> UBooleanLiteral(text.toBoolean(), ctx.location)
-            ctx.String() != null -> UStringLiteral(text.substring(1, text.length - 1), ctx.location)
+            ctx.string() != null -> UStringLiteral(parseString(ctx.string()), ctx.location)
             ctx.Null() != null -> UNullLiteral(ctx.location)
             ctx.identifier() != null -> UVariableAccess(text, ctx.location)
             else -> visitChildren(ctx)
@@ -157,18 +157,12 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitExternDeclaration(ctx: RolParser.ExternDeclarationContext): UNode {
-        val name = ctx.identifier().dropLast(if (ctx.name == null) 0 else 1)
-            .joinToString(".", transform = RolParser.IdentifierContext::getText)
         return UExternDeclaration(
-            Identifier(if (ctx.name == null) name else ctx.name.name.text),
-            name,
-            ctx.noTypeArgList().identifier().map {
-                Argument(
-                    it.text,
-                    Type.ANY,
-                    it.location
-                )
-            },
+            Identifier.fromNode(ctx.identifier()),
+            ctx.argList().arg().map { Argument(it.identifier().text, Type.parse(it.type().text), it.location) },
+            Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
+            parseString(ctx.string()).trim('\n'),
+            if (ctx.type() == null) Type.VOID else Type.parse(ctx.type().text),
             ctx.location
         )
     }
@@ -195,4 +189,21 @@ private fun convertToNormalAssignment(assign: AssignType, name: String, expr: UE
 
 private fun UNode.asStatements(): UStatements {
     return if (this is UStatements) this else UStatements(this)
+}
+
+private val replacements = buildMap {
+    put("\\\\n".toRegex(), "\n")
+    put("\\\\t".toRegex(), "\t")
+    put("\\\\r".toRegex(), "\r")
+}
+
+fun parseString(input: RolParser.StringContext): String {
+    val s = if (input.MultilineString() != null) {
+        val text = input.MultilineString().text
+        text.substring(3, text.length - 3)
+    } else {
+        val text = input.String().text
+        text.substring(1, text.length - 1)
+    }
+    return replacements.entries.fold(s) { acc, (regex, replacement) -> regex.replace(acc, replacement) }
 }

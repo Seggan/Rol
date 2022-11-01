@@ -3,10 +3,12 @@ package io.github.seggan.rol.postype
 import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.meta.FunctionUnit
+import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
 import io.github.seggan.rol.tree.lua.LBinaryExpression
 import io.github.seggan.rol.tree.lua.LExpression
+import io.github.seggan.rol.tree.lua.LExternDefinition
 import io.github.seggan.rol.tree.lua.LFunctionCall
 import io.github.seggan.rol.tree.lua.LFunctionDefinition
 import io.github.seggan.rol.tree.lua.LIfStatement
@@ -65,7 +67,11 @@ class Transpiler(
             }
 
             override fun visitExternDeclaration(declaration: TExternDeclaration) {
-                functions[declaration] = declaration.nativeName
+                val mangled = StringBuilder(mangle(declaration.name.toString(), declaration.type))
+                for (arg in declaration.args) {
+                    mangled.append(mangle(arg.name, arg.type))
+                }
+                functions[declaration] = mangled.toString()
             }
         }.start(node)
         return visit(node)
@@ -124,6 +130,11 @@ class Transpiler(
         val args = declaration.args.map { mangle(it.name, it.type) }
         val body = visit(declaration.body)
         return LFunctionDefinition(name, args, body.toStatements().withIndent(++indent)).also { indent-- }
+    }
+
+    override fun visitExternDeclaration(declaration: TExternDeclaration): LNode {
+        val args = declaration.args.map(Argument::name)
+        return LExternDefinition(functions[declaration]!!, args, declaration.body)
     }
 
     override fun visitFunctionCall(call: TFunctionCall): LNode {

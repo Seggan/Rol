@@ -1,7 +1,5 @@
 package rol.lang
 
-extern string.sub(s, start, end) is luaSub
-
-fun subs(s: String, start: Num, end: Num): String {
-    return luaSub(s, start + 1, end)!
-}
+extern fun subs(s: String, starti: Num, endi: Num): String = """
+    return string.sub(s, starti + 1, endi)
+"""

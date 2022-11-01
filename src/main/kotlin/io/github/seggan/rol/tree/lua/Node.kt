@@ -71,6 +71,13 @@ class LFunctionDefinition(val name: String, val args: List<String>, val body: LS
     }
 }
 
+class LExternDefinition(val name: String, val args: List<String>, val body: String) : LNode() {
+
+    override fun transpile(): String {
+        return "function $name(${args.joinToString(", ")})\n$body\nend"
+    }
+}
+
 class LReturn(val expression: LNode?) : LNode() {
     override fun transpile(): String {
         return "return ${expression?.transpile() ?: ""}"

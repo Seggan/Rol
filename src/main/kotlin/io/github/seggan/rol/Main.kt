@@ -9,7 +9,7 @@ import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
-import io.github.seggan.rol.tree.typed.TFunctionDeclaration
+import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements
 import kotlinx.cli.ArgParser
@@ -130,15 +130,17 @@ fun compile(path: Path): FileUnit {
 
     val transpiler = Transpiler(DEPENDENCY_MANAGER, imports)
     val transpiledAst = transpiler.start(typedAst)
-    val functions =
-        transpiler.functions.filterKeys { it is TFunctionDeclaration }.mapKeys { it.key as TFunctionDeclaration }
     return FileUnit(
         path.nameWithoutExtension,
         pkg,
-        functions.map {
-            FunctionUnit(it.key.name.name, it.value, it.key.args.map { a ->
-                ArgUnit(a.name, a.type)
-            }, it.key.type)
+        transpiler.functions.mapNotNull {
+            if (it.key.modifiers.access == AccessModifier.PUBLIC) {
+                FunctionUnit(it.key.name.name, it.value, it.key.args.map { a ->
+                    ArgUnit(a.name, a.type)
+                }, it.key.type)
+            } else {
+                null
+            }
         }.toSet(),
         setOf(),
         transpiledAst.transpile()

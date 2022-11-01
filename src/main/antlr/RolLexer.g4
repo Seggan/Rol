@@ -108,7 +108,11 @@ OctNumber
     ;
 
 String
-    : '"' .*? '"'
+    : '"' (~[\r\n])* '"'
+    ;
+
+MultilineString
+    : '"""' .*? '"""'
     ;
 
 Boolean
@@ -122,3 +126,5 @@ Null
 Identifier
     : [a-zA-Z_][a-zA-Z0-9_]*
     ;
+
+ANY: .;

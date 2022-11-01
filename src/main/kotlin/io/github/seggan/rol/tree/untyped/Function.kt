@@ -6,18 +6,25 @@ import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 
-sealed class UFn(val name: Identifier, val args: List<Argument>, children: List<UNode> = emptyList(), location: Location) :
+sealed class UFn(
+    val name: Identifier,
+    val args: List<Argument>,
+    val modifiers: Modifiers,
+    val type: Type,
+    children: List<UNode> = emptyList(),
+    location: Location
+) :
     UNode(children, location)
 
 class UFunctionDeclaration(
     name: Identifier,
     args: List<Argument>,
-    val modifiers: Modifiers,
+    modifiers: Modifiers,
     val body: UStatements,
-    val type: Type,
+    type: Type,
     location: Location
 ) :
-    UFn(name, args, listOf(body), location) {
+    UFn(name, args, modifiers, type, listOf(body), location) {
     override fun toString(): String {
         return "FunctionDeclaration($name, $args, $body)"
     }
@@ -27,10 +34,17 @@ class UFunctionDeclaration(
     }
 }
 
-class UExternDeclaration(name: Identifier, val nativeName: String, args: List<Argument>, location: Location) :
-    UFn(name, args, listOf(), location) {
+class UExternDeclaration(
+    name: Identifier,
+    args: List<Argument>,
+    modifiers: Modifiers,
+    val body: String,
+    type: Type,
+    location: Location
+) :
+    UFn(name, args, modifiers, type, listOf(), location) {
     override fun toString(): String {
-        return "ExternDeclaration($name, $nativeName, $args)"
+        return "ExternDeclaration($name, $args, $body)"
     }
 }
 
