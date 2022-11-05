@@ -84,6 +84,18 @@ class LReturn(val expression: LNode?) : LNode() {
     }
 }
 
+class LClosureCall(val code: LNode) : LNode() {
+    override fun transpile(): String {
+        return "(function () ${code.transpile()} end)()"
+    }
+}
+
+class LStructInit(val name: String, val args: Map<String, LNode>) : LExpression() {
+    override fun transpile(): String {
+        return "{ __clazz = '$name', ${args.map { "${it.key} = ${it.value.transpile()}" }.joinToString(", ")} }"
+    }
+}
+
 object LNop : LNode() {
     override fun transpile(): String {
         return ""

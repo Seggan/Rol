@@ -26,6 +26,7 @@ data class FileUnit(
     val pkg: String,
     val functions: Set<FunctionUnit>,
     val variables: Set<VariableUnit>,
+    val structs: Set<StructUnit>,
     val text: String
 ) : CompilationUnit<String> {
     companion object : CompilationUnitParser<FileUnit?, Path> {
@@ -45,7 +46,8 @@ data class FileUnit(
             val pkg = data.string("package") ?: "unnamed"
             val functions = data.array<JsonObject>("functions")!!.map { FunctionUnit.parse(1, it) }.toSet()
             val variables = data.array<JsonObject>("variables")!!.map { VariableUnit.parse(1, it) }.toSet()
-            return FileUnit("", pkg, functions, variables, "")
+            val structs = data.array<JsonObject>("structs")!!.map { StructUnit.parse(1, it) }.toSet()
+            return FileUnit("", pkg, functions, variables, structs, "")
         }
     }
 
@@ -55,7 +57,8 @@ data class FileUnit(
                 "version" to CompilationUnit.VERSION,
                 "package" to pkg,
                 "functions" to functions.map(FunctionUnit::serialize),
-                "variables" to variables.map(VariableUnit::serialize)
+                "variables" to variables.map(VariableUnit::serialize),
+                "structs" to structs.map(StructUnit::serialize)
             )
         ).toJsonString()
         return "-- ROLMETA $obj\npackage.path = \"./?.lua;\" .. package.path\nrequire \"rol_core\"\n$text"
@@ -63,8 +66,13 @@ data class FileUnit(
 
     fun findFunction(name: String, args: List<Type>): FunctionUnit? {
         return functions.find {
-            it.name == name && it.args.size == args.size && it.args.zip(args).all { (a, b) -> a.type.isAssignableFrom(b) }
+            it.name == name && it.args.size == args.size && it.args.values.zip(args)
+                .all { (a, b) -> a.isAssignableFrom(b) }
         }
+    }
+
+    fun findStruct(name: String): StructUnit? {
+        return structs.find { it.name.name == name }
     }
 }
 

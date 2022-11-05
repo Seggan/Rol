@@ -3,14 +3,19 @@ package io.github.seggan.rol.parsing
 import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Argument
+import io.github.seggan.rol.tree.common.Identifier
+import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
+import io.github.seggan.rol.tree.common.Struct
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TExternDeclaration
-import io.github.seggan.rol.tree.typed.TFn
+import io.github.seggan.rol.tree.typed.TField
+import io.github.seggan.rol.tree.typed.TFieldInit
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
@@ -23,6 +28,8 @@ import io.github.seggan.rol.tree.typed.TPrefixExpression
 import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
+import io.github.seggan.rol.tree.typed.TStruct
+import io.github.seggan.rol.tree.typed.TStructInit
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
@@ -31,6 +38,7 @@ import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExternDeclaration
+import io.github.seggan.rol.tree.untyped.UFn
 import io.github.seggan.rol.tree.untyped.UFunctionCall
 import io.github.seggan.rol.tree.untyped.UFunctionDeclaration
 import io.github.seggan.rol.tree.untyped.UIfStatement
@@ -43,18 +51,39 @@ import io.github.seggan.rol.tree.untyped.UPrefixExpression
 import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
+import io.github.seggan.rol.tree.untyped.UStruct
+import io.github.seggan.rol.tree.untyped.UStructInit
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
 
-class TypeChecker(private val dependencyManager: DependencyManager, private val imports: Set<String>, private val pkg: String) {
+class TypeChecker(
+    private val dependencyManager: DependencyManager,
+    private val imports: Set<String>,
+    private val pkg: String
+) {
 
     private val stack = ArrayDeque<StackFrame>()
     private val currentFrame get() = stack.first()
-    private val typedFunctions = mutableSetOf<TFn>()
+    private val typedFunctions = mutableSetOf<FunctionHeader>()
+    private val structs = mutableMapOf<UStruct, TStruct>()
 
     fun typeAst(ast: UStatements): TStatements {
-        return typeStatements(ast)
+        val current = ast.children.toMutableList()
+        val flat = ast.flatten()
+        for (node in flat.filterIsInstance<UStruct>()) {
+            structs[node] = typeStruct(node)
+        }
+        for (node in flat.filterIsInstance<UFn>()) {
+            typedFunctions.add(
+                FunctionHeader(
+                    node.name.name,
+                    node.args.map { it.copy(type = locateType(it.type, it.location)) },
+                    locateType(node.type, node.location)
+                )
+            )
+        }
+        return typeStatements(UStatements(current))
     }
 
     private fun type(node: UNode): TNode {
@@ -65,6 +94,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             is UVarAssign -> typeVariableAssignment(node)
             is UExternDeclaration -> typeExternDeclaration(node)
             is UFunctionDeclaration -> typeFunctionDeclaration(node)
+            is UStruct -> structs[node]!!
             is UReturn -> typeReturn(node)
             is UIfStatement -> typeIfStatement(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
@@ -89,10 +119,30 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             args,
             type,
             node.modifiers,
-            typeStatements(node.body, args.map { TVarDef(it.name, it.type, Modifiers(
-                AccessModifier.PRIVATE,
-                const = true
-            ), it.location) }, type),
+            typeStatements(node.body, args.map {
+                TVarDef(
+                    it.name, it.type, Modifiers(
+                        AccessModifier.PRIVATE,
+                        const = true
+                    ), it.location
+                )
+            }, type),
+            node.location
+        )
+    }
+
+    private fun typeStruct(node: UStruct): TStruct {
+        return TStruct(
+            node.name.copy(pkg = pkg),
+            node.fields.map {
+                if (it.name == "__clazz") Errors.genericError(
+                    "Illegal name",
+                    "Cannot use __clazz as a field name",
+                    it.location
+                )
+                TField(it.name, it.type, it.modifiers, it.location)
+            },
+            node.modifiers,
             node.location
         )
     }
@@ -124,12 +174,14 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
             is ULiteral -> typeLiteral(expr)
             is UFunctionCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
+            is UStructInit -> typeStructInit(expr)
             else -> throw IllegalArgumentException("Unknown expression type: ${expr.javaClass}")
         }
     }
 
     private fun typeVariableAccess(expr: UVariableAccess): TVariableAccess {
-        val varDef = currentFrame.vars.find { it.name == expr.name } ?: Errors.undefinedReference(expr.name, expr.location)
+        val varDef = currentFrame.vars.find { it.name == expr.name }
+            ?: Errors.undefinedReference(expr.name, expr.location)
         return TVariableAccess(varDef.name, varDef.type, expr.location)
     }
 
@@ -231,7 +283,7 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 )
             }
         } else {
-            return TVarDef(name, type, decl.modifiers, decl.location)
+            return TVarDef(name, locateType(type, decl.location), decl.modifiers, decl.location)
         }
     }
 
@@ -255,14 +307,14 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 return TFunctionCall(name.copy(pkg = name.pkg), args, returnType, call.location)
             }
         } else {
-            funcLoop@ for (func in typedFunctions.filter { it.name.name == name.name }) {
+            funcLoop@ for (func in typedFunctions.filter { it.name == name.name }) {
                 if (func.args.size == args.size) {
                     for (i in args.indices) {
                         if (!func.args[i].type.isAssignableFrom(args[i].type)) {
                             continue@funcLoop
                         }
                     }
-                    return TFunctionCall(name.copy(pkg = pkg), args, func.type, call.location)
+                    return TFunctionCall(name.copy(pkg = pkg), args, func.returnType, call.location)
                 }
             }
             for (import in imports) {
@@ -272,8 +324,32 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
                 }
             }
         }
-        val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.name }
+        val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.toString() }
         Errors.undefinedReference(errorName, call.location)
+    }
+
+    private fun typeStructInit(init: UStructInit): TStructInit {
+        val name = locateType(Type(init.name), init.location).name
+        val struct = getStruct(name)
+        var initCount = 0
+        val fields = init.fields.map {
+            val expr = checkVoid(typeExpression(it.value))
+            val expected = struct.fields[it.name] ?: Errors.undefinedReference(it.name, it.location)
+            if (expected.isAssignableFrom(expr.type)) {
+                initCount++
+                TFieldInit(it.name, expr, it.location)
+            } else {
+                Errors.typeMismatch(expected, expr.type, expr.location)
+            }
+        }
+        if (initCount != struct.fields.size) {
+            Errors.genericError(
+                "Struct initialization",
+                "Not all fields of struct $name are initialized",
+                init.location
+            )
+        }
+        return TStructInit(name, fields, init.location)
     }
 
     private fun isIn(pack: String, name: String, args: List<Type>): Type? {
@@ -292,13 +368,54 @@ class TypeChecker(private val dependencyManager: DependencyManager, private val 
         extraVars: List<TVarDef> = emptyList(),
         returnType: Type = if (stack.isEmpty()) Type.VOID else currentFrame.returnType
     ): TStatements {
-        val flat = statements.shallowFlatten()
-        typedFunctions.addAll(flat.filterIsInstance<UExternDeclaration>().map(::typeExternDeclaration))
-        typedFunctions.addAll(flat.filterIsInstance<UFunctionDeclaration>().map { typeFunctionDeclaration(it) })
         val vars = if (stack.isEmpty()) mutableListOf() else currentFrame.vars
         vars.addAll(extraVars)
         stack.addFirst(StackFrame(vars, statements, returnType))
         return TStatements(statements.children.map(::type), statements.location).also { stack.removeFirst() }
+    }
+
+    private fun locateType(t: Type, location: Location): Type {
+        if (t.isPrimitive) return t
+        if (t.name.pkg != null) {
+            for (dep in dependencyManager.getPackage(t.name.pkg)) {
+                val found = dep.findStruct(t.name.name)
+                if (found != null) {
+                    dependencyManager.usedDependencies.add(dep)
+                    return t // the struct is already qualified
+                }
+            }
+        } else {
+            for (s in structs.values) {
+                if (s.name.name == t.name.name) {
+                    return t.copy(name = t.name.copy(pkg = pkg))
+                }
+            }
+            for (import in imports) {
+                for (dep in dependencyManager.getPackage(import)) {
+                    val found = dep.findStruct(t.name.name)
+                    if (found != null) {
+                        dependencyManager.usedDependencies.add(dep)
+                        return t.copy(name = t.name.copy(pkg = import))
+                    }
+                }
+            }
+        }
+        Errors.undefinedReference(t.name.toString(), location)
+    }
+
+    private fun getStruct(fqname: Identifier): Struct {
+        if (fqname.pkg == pkg) {
+            return structs.values.first { it.name == fqname }
+        } else {
+            for (dep in dependencyManager.getPackage(fqname.pkg!!)) {
+                val found = dep.findStruct(fqname.name)
+                if (found != null) {
+                    dependencyManager.usedDependencies.add(dep)
+                    return found
+                }
+            }
+            throw AssertionError("Struct $fqname not found") // should never happen
+        }
     }
 }
 
@@ -314,3 +431,5 @@ private fun checkVoid(expr: TExpression): TExpression {
 }
 
 private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements, val returnType: Type)
+
+private data class FunctionHeader(val name: String, val args: List<Argument>, val returnType: Type)

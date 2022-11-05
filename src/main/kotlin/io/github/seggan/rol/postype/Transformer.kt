@@ -2,6 +2,8 @@ package io.github.seggan.rol.postype
 
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TExpression
+import io.github.seggan.rol.tree.typed.TField
+import io.github.seggan.rol.tree.typed.TFieldInit
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
@@ -10,6 +12,8 @@ import io.github.seggan.rol.tree.typed.TPostfixExpression
 import io.github.seggan.rol.tree.typed.TPrefixExpression
 import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
+import io.github.seggan.rol.tree.typed.TStruct
+import io.github.seggan.rol.tree.typed.TStructInit
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TypedTreeVisitor
 
@@ -88,6 +92,31 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
             visit(statement.ifBody) as TStatements,
             if (statement.elseBody == null) null else visit(statement.elseBody) as TStatements,
             statement.location
+        )
+    }
+
+    override fun visitStructDeclaration(declaration: TStruct): TNode {
+        return TStruct(
+            declaration.name,
+            declaration.fieldNodes.map(::visit).filterIsInstance<TField>(),
+            declaration.modifiers,
+            declaration.location
+        )
+    }
+
+    override fun visitStructInit(init: TStructInit): TNode {
+        return TStructInit(
+            init.name,
+            init.fields.map { visit(it) as TFieldInit },
+            init.location
+        )
+    }
+
+    override fun visitFieldInit(init: TFieldInit): TNode {
+        return TFieldInit(
+            init.name,
+            visit(init.value) as TExpression,
+            init.location
         )
     }
 }

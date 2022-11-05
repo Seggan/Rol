@@ -2,6 +2,7 @@ package io.github.seggan.rol
 
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
+import kotlin.system.exitProcess
 
 object Errors {
 
@@ -19,6 +20,6 @@ object Errors {
 
     fun genericError(type: String, message: String, location: Location): Nothing {
         System.err.println("$type error at $location: $message")
-        throw RuntimeException()
+        exitProcess(1)
     }
 }

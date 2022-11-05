@@ -2,9 +2,9 @@ package io.github.seggan.rol
 
 import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
-import io.github.seggan.rol.meta.ArgUnit
 import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.meta.FunctionUnit
+import io.github.seggan.rol.meta.StructUnit
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
@@ -19,9 +19,9 @@ import kotlinx.cli.required
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.io.OutputStream
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileVisitResult
@@ -99,7 +99,7 @@ lateinit var CURRENT_FILE: String
 fun compile(path: Path): FileUnit {
     // temporarily replace STDERR to catch ANTLR errors
     val stderr = System.err
-    val newErr = ErrCatcher()
+    val newErr = ByteArrayOutputStream()
     System.setErr(PrintStream(newErr))
 
     val stream = CommonTokenStream(RolLexer(CharStreams.fromPath(path, StandardCharsets.UTF_8)))
@@ -107,9 +107,10 @@ fun compile(path: Path): FileUnit {
 
     CURRENT_FILE = path.fileName.toString()
 
+    System.err.flush()
     System.setErr(stderr)
-    newErr.buffer.forEach(System.err::write)
-    if (newErr.buffer.isNotEmpty()) {
+    if (newErr.size() > 0) {
+        newErr.writeTo(System.err)
         exitProcess(1)
     }
 
@@ -128,30 +129,28 @@ fun compile(path: Path): FileUnit {
         typedAst = folder.start(typedAst)
     } while (folder.changed)
 
-    val transpiler = Transpiler(DEPENDENCY_MANAGER, imports)
+    val transpiler = Transpiler(DEPENDENCY_MANAGER)
     val transpiledAst = transpiler.start(typedAst)
     return FileUnit(
         path.nameWithoutExtension,
         pkg,
-        transpiler.functions.mapNotNull {
+        transpiler.functions.mapNotNullTo(HashSet()) {
             if (it.key.modifiers.access == AccessModifier.PUBLIC) {
-                FunctionUnit(it.key.name.name, it.value, it.key.args.map { a ->
-                    ArgUnit(a.name, a.type)
+                FunctionUnit(it.key.name.name, it.value, it.key.args.associateTo(LinkedHashMap()) { a ->
+                    a.name to a.type
                 }, it.key.type)
             } else {
                 null
             }
-        }.toSet(),
+        },
         setOf(),
+        transpiler.structs.mapNotNullTo(HashSet()) {
+            if (it.modifiers.access == AccessModifier.PUBLIC) {
+                StructUnit(it.name, it.fields, it.modifiers.const)
+            } else {
+                null
+            }
+        },
         transpiledAst.transpile()
     )
-}
-
-private class ErrCatcher : OutputStream() {
-
-    val buffer = mutableListOf<Int>()
-
-    override fun write(b: Int) {
-        buffer.add(b)
-    }
 }

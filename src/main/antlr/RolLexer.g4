@@ -31,6 +31,9 @@ IN: 'in';
 BREAK: 'break';
 CONTINUE: 'continue';
 RETURN: 'return';
+THROW: 'throw';
+TRY: 'try';
+CATCH: 'catch';
 
 STRUCT: 'struct';
 INIT: 'init';

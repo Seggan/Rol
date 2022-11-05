@@ -52,15 +52,15 @@ argList
     ;
 
 arg
-    : identifier COLON NL* type
+    : Identifier COLON NL* type
     ;
 
 structDeclaration
-    : STRUCT NL* identifier NL* LBRACE NL* (varDeclaration NL*)* (constructorDeclaration NL*)* RBRACE
+    : accessModifier? NL* CONST? NL* STRUCT NL* identifier NL* LBRACE NL* (structField NL*)* RBRACE
     ;
 
-constructorDeclaration
-    : accessModifier? NL* INIT NL* argList NL* block
+structField
+    : accessModifier? NL* CONST? NL* Identifier NL* COLON NL* type
     ;
 
 externDeclaration
@@ -87,12 +87,21 @@ expression
 
 primary
     : LPAREN NL* expression NL* RPAREN
+    | structInit
     | call
     | number
     | string
     | Boolean
     | Null
     | identifier
+    ;
+
+structInit
+    : identifier LBRACE NL* (fieldInit NL*)? (COMMA NL* fieldInit NL*)* RBRACE
+    ;
+
+fieldInit
+    : Identifier NL* ASSIGN NL* expression
     ;
 
 call
@@ -111,6 +120,7 @@ control
     | foreachStatement
     | returnStatement
     | block
+    | throwStatement
     ;
 
 ifStatement
@@ -143,6 +153,10 @@ returnStatement
 
 block
     : LBRACE NL* statements NL* RBRACE
+    ;
+
+throwStatement
+    : THROW NL* expression
     ;
 
 type
