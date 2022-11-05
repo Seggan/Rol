@@ -54,7 +54,7 @@ sealed class LExpression : LNode()
 
 class LBinaryExpression(private val left: LNode, private val operator: String, val right: LNode) : LExpression() {
     override fun transpile(): String {
-        return "(${left.transpile()} $operator ${right.transpile()})"
+        return "(${left.transpile()}$operator${right.transpile()})"
     }
 }
 

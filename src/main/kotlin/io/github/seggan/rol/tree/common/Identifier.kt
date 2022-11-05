@@ -11,7 +11,7 @@ data class Identifier(val name: String, val pkg: String? = null) {
 
         fun parseString(string: String): Identifier {
             val split = string.split('/')
-            return Identifier(split.last(), split.dropLast(1).joinToString("."))
+            return Identifier(split.last(), split.dropLast(1).joinToString(".").ifBlank { null })
         }
     }
 

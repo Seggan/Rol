@@ -109,4 +109,9 @@ open class TypedTreeVisitor<R> {
         visit(init.value)
         return defaultValue(init)
     }
+
+    open fun visitAccess(access: TAccess): R {
+        visit(access.target)
+        return defaultValue(access)
+    }
 }

@@ -40,7 +40,7 @@ data class Type (val name: Identifier, val nullable: Boolean = false) {
         }
 
         fun struct(name: Identifier): Type {
-            return Type(name.toString())
+            return Type(name)
         }
     }
 

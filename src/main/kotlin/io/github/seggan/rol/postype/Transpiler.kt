@@ -21,6 +21,7 @@ import io.github.seggan.rol.tree.lua.LString
 import io.github.seggan.rol.tree.lua.LStructInit
 import io.github.seggan.rol.tree.lua.LUnaryExpression
 import io.github.seggan.rol.tree.lua.LVariableDeclaration
+import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
@@ -141,14 +142,14 @@ class Transpiler(
     }
 
     override fun visitFunctionCall(call: TFunctionCall): LNode {
-        val available = functions.filterKeys { it.matches(call.name, call.args) }
+        val available = functions.filterKeys { it.matches(call.field, call.args) }
         val name: String
         if (available.size > 1) {
-            Errors.undefinedReference(call.name, call.location)
+            Errors.undefinedReference(call.field, call.location)
         } else if (available.isEmpty()) {
             var function: FunctionUnit? = null
             for (pkg in manager.getPackage(call.fname.pkg!!)) {
-                function = pkg.findFunction(call.name, call.args.map(TNode::type))
+                function = pkg.findFunction(call.field, call.args.map(TNode::type))
                 if (function != null) {
                     break
                 }
@@ -166,7 +167,7 @@ class Transpiler(
     }
 
     override fun visitVariableAccess(access: TVariableAccess): LNode {
-        return LLiteral(mangle(access.name, access.type))
+        return LLiteral(mangle(access.field, access.type))
     }
 
     override fun visitVariableAssignment(assignment: TVarAssign): LNode {
@@ -178,12 +179,16 @@ class Transpiler(
     }
 
     override fun visitStructInit(init: TStructInit): LNode {
-        return LStructInit(init.name.name, init.fields.associate { it.name to visit(it.value) })
+        return LStructInit(init.name.toString(), init.fields.associate { it.name to visit(it.value) })
     }
 
     override fun visitStructDeclaration(declaration: TStruct): LNode {
         structs.add(declaration)
         return super.visitStructDeclaration(declaration)
+    }
+
+    override fun visitAccess(access: TAccess): LNode {
+        return LBinaryExpression(visit(access.target), ".", LLiteral(access.field))
     }
 
     override fun visitIfStatement(statement: TIfStatement): LNode {

@@ -19,8 +19,8 @@ class UFunctionCall(val fname: Identifier, val args: List<UExpression>, location
     }
 }
 
-class UAccess(val obj: UExpression, name: String, location: Location) : UIdentifier(name, listOf(obj), location) {
+class UAccess(val target: UExpression, name: String, location: Location) : UIdentifier(name, listOf(target), location) {
     override fun toString(): String {
-        return "Access($obj, $name)"
+        return "Access($target, $name)"
     }
 }

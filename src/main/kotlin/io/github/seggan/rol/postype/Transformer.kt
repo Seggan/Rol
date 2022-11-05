@@ -1,5 +1,6 @@
 package io.github.seggan.rol.postype
 
+import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TField
@@ -117,6 +118,15 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
             init.name,
             visit(init.value) as TExpression,
             init.location
+        )
+    }
+
+    override fun visitAccess(access: TAccess): TNode {
+        return TAccess(
+            visit(access.target) as TExpression,
+            access.field,
+            access.type,
+            access.location
         )
     }
 }

@@ -9,6 +9,7 @@ import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Struct
 import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
@@ -33,6 +34,7 @@ import io.github.seggan.rol.tree.typed.TStructInit
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
+import io.github.seggan.rol.tree.untyped.UAccess
 import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
@@ -175,6 +177,7 @@ class TypeChecker(
             is UFunctionCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
             is UStructInit -> typeStructInit(expr)
+            is UAccess -> typeAccess(expr)
             else -> throw IllegalArgumentException("Unknown expression type: ${expr.javaClass}")
         }
     }
@@ -261,6 +264,17 @@ class TypeChecker(
         } else {
             return TPostfixExpression(operand, op, result, expr.location)
         }
+    }
+
+    private fun typeAccess(expr: UAccess): TAccess {
+        val target = typeExpression(expr.target)
+        if (target.type.isPrimitive) Errors.genericError(
+            "Illegal access",
+            "Cannot access fields of primitive types",
+            expr.location
+        )
+        val field = getStruct(target.type.name).fields[expr.name] ?: Errors.undefinedReference(expr.name, expr.location)
+        return TAccess(target, expr.name, field, expr.location)
     }
 
     private fun typeVariableDeclaration(decl: UVarDef): TVarDef {
@@ -423,7 +437,7 @@ private fun checkVoid(expr: TExpression): TExpression {
     if (expr is TFunctionCall && expr.type == Type.VOID) {
         Errors.genericError(
             "Type inference",
-            "The non-returning function ${expr.name} cannot be used in an expression",
+            "The non-returning function ${expr.field} cannot be used in an expression",
             expr.location
         )
     }
