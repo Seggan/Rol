@@ -114,8 +114,8 @@ class TypeChecker(
     }
 
     private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
-        val args = node.args
-        val type = node.type
+        val args = node.args.map { it.copy(type = locateType(it.type, it.location)) }
+        val type = locateType(node.type, node.location)
         return TFunctionDeclaration(
             node.name.copy(pkg = pkg),
             args,
@@ -152,10 +152,10 @@ class TypeChecker(
     private fun typeExternDeclaration(declaration: UExternDeclaration): TExternDeclaration {
         return TExternDeclaration(
             declaration.name.copy(pkg = pkg),
-            declaration.args,
+            declaration.args.map { it.copy(type = locateType(it.type, it.location)) },
             declaration.modifiers,
             declaration.body,
-            declaration.type,
+            locateType(declaration.type, declaration.location),
             declaration.location
         )
     }
