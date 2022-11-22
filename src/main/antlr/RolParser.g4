@@ -35,7 +35,7 @@ varDeclaration
     ;
 
 assignment
-    : identifier NL* assignmentOp NL* expression
+    : identifier (NL* DOT NL* identifier)* NL* assignmentOp NL* expression
     ;
 
 assignmentOp

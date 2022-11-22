@@ -24,3 +24,10 @@ class UAccess(val target: UExpression, name: String, location: Location) : UIden
         return "Access($target, $name)"
     }
 }
+
+class UFieldSet(val target: List<String>, val value: UExpression, location: Location) :
+    UNode(listOf(value), location) {
+    override fun toString(): String {
+        return "FieldSet($target, $value)"
+    }
+}

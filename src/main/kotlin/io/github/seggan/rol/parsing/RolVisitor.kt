@@ -138,16 +138,19 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitAssignment(ctx: RolParser.AssignmentContext): UNode {
-        val name = ctx.identifier().text
-        return UVarAssign(
-            name,
-            convertToNormalAssignment(
-                AssignType.fromSymbol(ctx.assignmentOp().text),
-                name,
-                visit(ctx.expression()).asExpr()
-            ),
-            ctx.location
-        )
+        val name = ctx.identifier().map { it.text }
+        if (name.size == 1) {
+            return UVarAssign(
+                name[0],
+                convertToNormalAssignment(
+                    AssignType.fromSymbol(ctx.assignmentOp().text),
+                    name,
+                    visit(ctx.expression()).asExpr()
+                ),
+                ctx.location
+            )
+        }
+        TODO()
     }
 
     override fun visitIfStatement(ctx: RolParser.IfStatementContext): UNode {
@@ -213,11 +216,20 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 }
 
-private fun convertToNormalAssignment(assign: AssignType, name: String, expr: UExpression): UExpression {
+private fun convertToNormalAssignment(assign: AssignType, name: List<String>, expr: UExpression): UExpression {
     return if (assign.operation == null) {
         expr
     } else {
-        UBinaryExpression(UVariableAccess(name, expr.location.copy(text = name)), expr, assign.operation, expr.location)
+        val access = if (name.size == 1) {
+            UVariableAccess(name[0], expr.location)
+        } else {
+            var a = UAccess(UVariableAccess(name[0], expr.location), name[1], expr.location)
+            for (i in 2 until name.size) {
+                a = UAccess(a, name[i], expr.location)
+            }
+            a
+        }
+        UBinaryExpression(access, expr, assign.operation, expr.location)
     }
 }
 
