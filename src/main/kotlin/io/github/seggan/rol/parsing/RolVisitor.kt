@@ -16,8 +16,6 @@ import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExternDeclaration
-import io.github.seggan.rol.tree.untyped.UField
-import io.github.seggan.rol.tree.untyped.UFieldInit
 import io.github.seggan.rol.tree.untyped.UFunctionCall
 import io.github.seggan.rol.tree.untyped.UFunctionDeclaration
 import io.github.seggan.rol.tree.untyped.UIfStatement
@@ -31,8 +29,6 @@ import io.github.seggan.rol.tree.untyped.UPrefixOperator
 import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
-import io.github.seggan.rol.tree.untyped.UStruct
-import io.github.seggan.rol.tree.untyped.UStructInit
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
@@ -104,14 +100,6 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.identifier() != null -> UVariableAccess(text, ctx.location)
             else -> visitChildren(ctx)
         }
-    }
-
-    override fun visitStructInit(ctx: RolParser.StructInitContext): UNode {
-        return UStructInit(
-            Identifier.fromNode(ctx.identifier()),
-            ctx.fieldInit().map { UFieldInit(it.Identifier().text, visit(it.expression()) as UExpression, it.location) },
-            ctx.location
-        )
     }
 
     override fun visitCall(ctx: RolParser.CallContext): UNode {
@@ -189,24 +177,6 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     override fun visitReturnStatement(ctx: RolParser.ReturnStatementContext): UNode {
         return UReturn(
             if (ctx.expression() == null) null else visit(ctx.expression()).asExpr(),
-            ctx.location
-        )
-    }
-
-    override fun visitStructDeclaration(ctx: RolParser.StructDeclarationContext): UNode {
-        return UStruct(
-            Identifier.fromNode(ctx.identifier()),
-            ctx.structField().map { visit(it) as UField },
-            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
-            ctx.location
-        )
-    }
-
-    override fun visitStructField(ctx: RolParser.StructFieldContext): UNode {
-        return UField(
-            ctx.Identifier().text,
-            Type.parse(ctx.type()),
-            Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
             ctx.location
         )
     }

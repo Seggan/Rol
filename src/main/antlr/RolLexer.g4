@@ -35,7 +35,7 @@ THROW: 'throw';
 TRY: 'try';
 CATCH: 'catch';
 
-STRUCT: 'struct';
+CLASS: 'class';
 INIT: 'init';
 ENUM: 'enum';
 INST: 'inst';

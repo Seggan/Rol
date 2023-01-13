@@ -4,7 +4,6 @@ import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.meta.FunctionUnit
-import io.github.seggan.rol.meta.StructUnit
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
@@ -144,13 +143,7 @@ fun compile(path: Path): FileUnit {
             }
         },
         setOf(),
-        transpiler.structs.mapNotNullTo(HashSet()) {
-            if (it.modifiers.access == AccessModifier.PUBLIC) {
-                StructUnit(it.name, it.fields, it.modifiers.const)
-            } else {
-                null
-            }
-        },
+        transpiler.structs.mapNotNullTo(HashSet()) { null /* TODO */ },
         transpiledAst.transpile()
     )
 }

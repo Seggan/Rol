@@ -4,19 +4,14 @@ import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
-import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
-import io.github.seggan.rol.tree.common.Struct
 import io.github.seggan.rol.tree.common.Type
-import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TExternDeclaration
-import io.github.seggan.rol.tree.typed.TField
-import io.github.seggan.rol.tree.typed.TFieldInit
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
@@ -29,12 +24,9 @@ import io.github.seggan.rol.tree.typed.TPrefixExpression
 import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
-import io.github.seggan.rol.tree.typed.TStruct
-import io.github.seggan.rol.tree.typed.TStructInit
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
-import io.github.seggan.rol.tree.untyped.UAccess
 import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
@@ -53,8 +45,6 @@ import io.github.seggan.rol.tree.untyped.UPrefixExpression
 import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
-import io.github.seggan.rol.tree.untyped.UStruct
-import io.github.seggan.rol.tree.untyped.UStructInit
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
@@ -68,14 +58,10 @@ class TypeChecker(
     private val stack = ArrayDeque<StackFrame>()
     private val currentFrame get() = stack.first()
     private val typedFunctions = mutableSetOf<FunctionHeader>()
-    private val structs = mutableMapOf<UStruct, TStruct>()
 
     fun typeAst(ast: UStatements): TStatements {
         val current = ast.children.toMutableList()
         val flat = ast.flatten()
-        for (node in flat.filterIsInstance<UStruct>()) {
-            structs[node] = typeStruct(node)
-        }
         for (node in flat.filterIsInstance<UFn>()) {
             typedFunctions.add(
                 FunctionHeader(
@@ -96,7 +82,6 @@ class TypeChecker(
             is UVarAssign -> typeVariableAssignment(node)
             is UExternDeclaration -> typeExternDeclaration(node)
             is UFunctionDeclaration -> typeFunctionDeclaration(node)
-            is UStruct -> structs[node]!!
             is UReturn -> typeReturn(node)
             is UIfStatement -> typeIfStatement(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
@@ -133,22 +118,6 @@ class TypeChecker(
         )
     }
 
-    private fun typeStruct(node: UStruct): TStruct {
-        return TStruct(
-            node.name.copy(pkg = pkg),
-            node.fields.map {
-                if (it.name == "__clazz") Errors.genericError(
-                    "Illegal name",
-                    "Cannot use __clazz as a field name",
-                    it.location
-                )
-                TField(it.name, it.type, it.modifiers, it.location)
-            },
-            node.modifiers,
-            node.location
-        )
-    }
-
     private fun typeExternDeclaration(declaration: UExternDeclaration): TExternDeclaration {
         return TExternDeclaration(
             declaration.name.copy(pkg = pkg),
@@ -176,8 +145,6 @@ class TypeChecker(
             is ULiteral -> typeLiteral(expr)
             is UFunctionCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
-            is UStructInit -> typeStructInit(expr)
-            is UAccess -> typeAccess(expr)
             else -> throw IllegalArgumentException("Unknown expression type: ${expr.javaClass}")
         }
     }
@@ -266,17 +233,6 @@ class TypeChecker(
         }
     }
 
-    private fun typeAccess(expr: UAccess): TAccess {
-        val target = typeExpression(expr.target)
-        if (target.type.isPrimitive) Errors.genericError(
-            "Illegal access",
-            "Cannot access fields of primitive types",
-            expr.location
-        )
-        val field = getStruct(target.type.name).fields[expr.name] ?: Errors.undefinedReference(expr.name, expr.location)
-        return TAccess(target, expr.name, field, expr.location)
-    }
-
     private fun typeVariableDeclaration(decl: UVarDef): TVarDef {
         val type = decl.type
         val name = decl.name
@@ -342,30 +298,6 @@ class TypeChecker(
         Errors.undefinedReference(errorName, call.location)
     }
 
-    private fun typeStructInit(init: UStructInit): TStructInit {
-        val name = locateType(Type(init.name), init.location).name
-        val struct = getStruct(name)
-        var initCount = 0
-        val fields = init.fields.map {
-            val expr = checkVoid(typeExpression(it.value))
-            val expected = struct.fields[it.name] ?: Errors.undefinedReference(it.name, it.location)
-            if (expected.isAssignableFrom(expr.type)) {
-                initCount++
-                TFieldInit(it.name, expr, it.location)
-            } else {
-                Errors.typeMismatch(expected, expr.type, expr.location)
-            }
-        }
-        if (initCount != struct.fields.size) {
-            Errors.genericError(
-                "Struct initialization",
-                "Not all fields of struct $name are initialized",
-                init.location
-            )
-        }
-        return TStructInit(name, fields, init.location)
-    }
-
     private fun isIn(pack: String, name: String, args: List<Type>): Type? {
         for (dep in dependencyManager.getPackage(pack)) {
             val func = dep.findFunction(name, args)
@@ -399,11 +331,6 @@ class TypeChecker(
                 }
             }
         } else {
-            for (s in structs.values) {
-                if (s.name.name == t.name.name) {
-                    return t.copy(name = t.name.copy(pkg = pkg))
-                }
-            }
             for (import in imports) {
                 for (dep in dependencyManager.getPackage(import)) {
                     val found = dep.findStruct(t.name.name)
@@ -415,21 +342,6 @@ class TypeChecker(
             }
         }
         Errors.undefinedReference(t.name.toString(), location)
-    }
-
-    private fun getStruct(fqname: Identifier): Struct {
-        if (fqname.pkg == pkg) {
-            return structs.values.first { it.name == fqname }
-        } else {
-            for (dep in dependencyManager.getPackage(fqname.pkg!!)) {
-                val found = dep.findStruct(fqname.name)
-                if (found != null) {
-                    dependencyManager.usedDependencies.add(dep)
-                    return found
-                }
-            }
-            throw AssertionError("Struct $fqname not found") // should never happen
-        }
     }
 }
 

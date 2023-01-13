@@ -25,7 +25,7 @@ statement
 
 declaration
     : varDeclaration
-    | structDeclaration
+    | classDeclaration
     | functionDeclaration
     | externDeclaration
     ;
@@ -55,12 +55,17 @@ arg
     : Identifier COLON NL* type
     ;
 
-structDeclaration
-    : accessModifier? NL* CONST? NL* STRUCT NL* identifier NL* LBRACE NL* (structField NL*)* RBRACE
+classDeclaration
+    : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* identifier)? NL* LBRACE NL*
+        ((fieldDeclaration | constructor) NL*)* RBRACE
     ;
 
-structField
-    : accessModifier? NL* CONST? NL* Identifier NL* COLON NL* type
+fieldDeclaration
+    : accessModifier? NL* CONST? NL* VAR NL* identifier COLON NL* type
+    ;
+
+constructor
+    : accessModifier? NL* INIT NL* argList NL* block
     ;
 
 externDeclaration
@@ -87,21 +92,12 @@ expression
 
 primary
     : LPAREN NL* expression NL* RPAREN
-    | structInit
     | call
     | number
     | string
     | Boolean
     | Null
     | identifier
-    ;
-
-structInit
-    : identifier LBRACE NL* (fieldInit NL*)? (COMMA NL* fieldInit NL*)* RBRACE
-    ;
-
-fieldInit
-    : Identifier NL* ASSIGN NL* expression
     ;
 
 call
@@ -167,7 +163,6 @@ type
 identifier
     : (package SLASH)? name=(Identifier
     | CONST
-    | INST
     | EXTERN
     | INIT)
     ;

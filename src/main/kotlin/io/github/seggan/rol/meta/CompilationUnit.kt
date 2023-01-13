@@ -26,7 +26,7 @@ data class FileUnit(
     val pkg: String,
     val functions: Set<FunctionUnit>,
     val variables: Set<VariableUnit>,
-    val structs: Set<StructUnit>,
+    val structs: Set<ClassUnit>,
     val text: String
 ) : CompilationUnit<String> {
     companion object : CompilationUnitParser<FileUnit?, Path> {
@@ -46,7 +46,7 @@ data class FileUnit(
             val pkg = data.string("package") ?: "unnamed"
             val functions = data.array<JsonObject>("functions")!!.map { FunctionUnit.parse(1, it) }.toSet()
             val variables = data.array<JsonObject>("variables")!!.map { VariableUnit.parse(1, it) }.toSet()
-            val structs = data.array<JsonObject>("structs")!!.map { StructUnit.parse(1, it) }.toSet()
+            val structs = data.array<JsonObject>("structs")!!.map { ClassUnit.parse(1, it) }.toSet()
             return FileUnit("", pkg, functions, variables, structs, "")
         }
     }
@@ -58,7 +58,7 @@ data class FileUnit(
                 "package" to pkg,
                 "functions" to functions.map(FunctionUnit::serialize),
                 "variables" to variables.map(VariableUnit::serialize),
-                "structs" to structs.map(StructUnit::serialize)
+                "structs" to structs.map(ClassUnit::serialize)
             )
         ).toJsonString()
         return "-- ROLMETA $obj\npackage.path = \"./?.lua;\" .. package.path\nrequire \"rol_core\"\n$text"
@@ -71,7 +71,7 @@ data class FileUnit(
         }
     }
 
-    fun findStruct(name: String): StructUnit? {
+    fun findStruct(name: String): ClassUnit? {
         return structs.find { it.name.name == name }
     }
 }
