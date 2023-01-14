@@ -34,7 +34,7 @@ import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExternDeclaration
 import io.github.seggan.rol.tree.untyped.UFn
 import io.github.seggan.rol.tree.untyped.UFunctionCall
-import io.github.seggan.rol.tree.untyped.UFunctionDeclaration
+import io.github.seggan.rol.tree.untyped.UFunctionDef
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULiteral
 import io.github.seggan.rol.tree.untyped.UNode
@@ -81,7 +81,7 @@ class TypeChecker(
             is UVarDef -> typeVariableDeclaration(node).also { currentFrame.vars.add(it) }
             is UVarAssign -> typeVariableAssignment(node)
             is UExternDeclaration -> typeExternDeclaration(node)
-            is UFunctionDeclaration -> typeFunctionDeclaration(node)
+            is UFunctionDef -> typeFunctionDeclaration(node)
             is UReturn -> typeReturn(node)
             is UIfStatement -> typeIfStatement(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
@@ -98,7 +98,7 @@ class TypeChecker(
         return TIfStatement(condition, body, elseBody, node.location)
     }
 
-    private fun typeFunctionDeclaration(node: UFunctionDeclaration): TFunctionDeclaration {
+    private fun typeFunctionDeclaration(node: UFunctionDef): TFunctionDeclaration {
         val args = node.args.map { it.copy(type = locateType(it.type, it.location)) }
         val type = locateType(node.type, node.location)
         return TFunctionDeclaration(

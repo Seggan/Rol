@@ -10,7 +10,7 @@ private val PRIMITIVE_TYPES = setOf(
     "<nothing>"
 )
 
-data class Type (val name: Identifier, val nullable: Boolean = false) {
+data class Type(val name: Identifier, val nullable: Boolean = false) {
 
     constructor(name: String, nullable: Boolean = false) : this(Identifier(name), nullable)
 
@@ -58,4 +58,8 @@ data class Type (val name: Identifier, val nullable: Boolean = false) {
             else -> this == other
         }
     }
+}
+
+fun RolParser.TypeContext.toType(): Type {
+    return Type.parse(this)
 }

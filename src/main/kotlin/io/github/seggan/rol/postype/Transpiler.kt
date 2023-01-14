@@ -18,7 +18,6 @@ import io.github.seggan.rol.tree.lua.LNop
 import io.github.seggan.rol.tree.lua.LReturn
 import io.github.seggan.rol.tree.lua.LStatements
 import io.github.seggan.rol.tree.lua.LString
-import io.github.seggan.rol.tree.lua.LStructInit
 import io.github.seggan.rol.tree.lua.LUnaryExpression
 import io.github.seggan.rol.tree.lua.LVariableDeclaration
 import io.github.seggan.rol.tree.typed.TAccess
@@ -39,8 +38,6 @@ import io.github.seggan.rol.tree.typed.TPrefixExpression
 import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
-import io.github.seggan.rol.tree.typed.TStruct
-import io.github.seggan.rol.tree.typed.TStructInit
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
@@ -52,7 +49,6 @@ class Transpiler(
 ) : TypedTreeVisitor<LNode>() {
 
     val functions = mutableMapOf<TFn, String>()
-    val structs = mutableSetOf<TStruct>()
 
     private var indent = 0
 
@@ -176,15 +172,6 @@ class Transpiler(
 
     override fun visitReturn(ret: TReturn): LNode {
         return LReturn(if (ret.value == null) null else visit(ret.value))
-    }
-
-    override fun visitStructInit(init: TStructInit): LNode {
-        return LStructInit(init.name.toString(), init.fields.associate { it.name to visit(it.value) })
-    }
-
-    override fun visitStructDeclaration(declaration: TStruct): LNode {
-        structs.add(declaration)
-        return super.visitStructDeclaration(declaration)
     }
 
     override fun visitAccess(access: TAccess): LNode {

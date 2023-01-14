@@ -19,3 +19,7 @@ data class Identifier(val name: String, val pkg: String? = null) {
         return if (pkg == null) name else "$pkg/$name"
     }
 }
+
+fun RolParser.IdentifierContext.toIdentifier(): Identifier {
+    return Identifier.fromNode(this)
+}

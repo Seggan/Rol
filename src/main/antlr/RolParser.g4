@@ -44,7 +44,7 @@ assignmentOp
     ;
 
 functionDeclaration
-    : accessModifier? NL* CONST? NL* INST? NL* FUN NL* identifier NL* argList NL* (COLON NL* type)? NL* block
+    : accessModifier? NL* FUN NL* identifier NL* argList NL* (COLON NL* type)? NL* block
     ;
 
 argList
@@ -57,7 +57,7 @@ arg
 
 classDeclaration
     : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* identifier)? NL* LBRACE NL*
-        ((fieldDeclaration | constructor) NL*)* RBRACE
+    ((fieldDeclaration | constructor | functionDeclaration | externDeclaration) NL*)* RBRACE
     ;
 
 fieldDeclaration

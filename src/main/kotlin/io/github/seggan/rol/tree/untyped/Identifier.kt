@@ -19,6 +19,13 @@ class UFunctionCall(val fname: Identifier, val args: List<UExpression>, location
     }
 }
 
+class UDottedCall(val obj: UExpression, val call: UFunctionCall, location: Location) :
+    UIdentifier(call.fname.name, listOf(obj, call), location), Reference {
+    override fun toString(): String {
+        return "DottedCall($obj, $call)"
+    }
+}
+
 class UAccess(val target: UExpression, name: String, location: Location) : UIdentifier(name, listOf(target), location) {
     override fun toString(): String {
         return "Access($target, $name)"

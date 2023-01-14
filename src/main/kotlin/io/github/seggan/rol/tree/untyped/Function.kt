@@ -16,7 +16,7 @@ sealed class UFn(
 ) :
     UNode(children, location)
 
-class UFunctionDeclaration(
+class UFunctionDef(
     name: Identifier,
     args: List<Argument>,
     modifiers: Modifiers,
