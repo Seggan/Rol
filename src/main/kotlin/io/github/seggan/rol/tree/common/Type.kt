@@ -77,8 +77,7 @@ class ConcreteType(
     override fun isAssignableFrom(other: Type): Boolean {
         return when {
             super.isAssignableFrom(other) -> true
-            other is ConcreteType -> isSubclassOf(other)
-            other is InterfaceType -> isSubclassOf(other)
+            other is ConcreteType -> other.isSubclassOf(this)
             else -> false
         }
     }
@@ -95,7 +94,7 @@ class InterfaceType(name: Identifier, nullable: Boolean = false, val extends: Li
     override fun isAssignableFrom(other: Type): Boolean {
         return when {
             super.isAssignableFrom(other) -> true
-            other is InterfaceType -> superInterfaces.contains(other)
+            other is InterfaceType -> other.superInterfaces.contains(this)
             else -> false
         }
     }
