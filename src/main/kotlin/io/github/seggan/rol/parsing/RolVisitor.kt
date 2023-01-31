@@ -7,7 +7,7 @@ import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
-import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.VoidType
 import io.github.seggan.rol.tree.common.location
 import io.github.seggan.rol.tree.common.toIdentifier
 import io.github.seggan.rol.tree.common.toType
@@ -161,7 +161,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.argList().arg().map { Argument(it.Identifier().text, it.type().toType(), it.location) },
             Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
             visit(ctx.block()).asStatements(),
-            if (ctx.type() == null) Type.VOID else ctx.type().toType(),
+            if (ctx.type() == null) VoidType else ctx.type().toType(),
             ctx.location
         )
     }
@@ -172,7 +172,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.argList().arg().map { Argument(it.Identifier().text, it.type().toType(), it.location) },
             Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
             parseString(ctx.string()).trim('\n'),
-            if (ctx.type() == null) Type.VOID else ctx.type().toType(),
+            if (ctx.type() == null) VoidType else ctx.type().toType(),
             ctx.location
         )
     }

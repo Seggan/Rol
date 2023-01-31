@@ -18,6 +18,10 @@ object Errors {
         genericError("Type mismatch", "Expected $expected, got $actual", location)
     }
 
+    fun typeError(message: String, location: Location): Nothing {
+        genericError("Type", message, location)
+    }
+
     fun genericError(type: String, message: String, location: Location): Nothing {
         System.err.println("$type error at $location: $message")
         exitProcess(1)

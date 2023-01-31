@@ -5,18 +5,21 @@ import io.github.seggan.rol.antlr.RolParser
 data class Identifier(val name: String, val pkg: String? = null) {
 
     companion object {
+
+        private val SEPARATOR = ':'
+
         fun fromNode(node: RolParser.IdentifierContext): Identifier {
             return Identifier(node.name.text, node.package_()?.text)
         }
 
         fun parseString(string: String): Identifier {
-            val split = string.split('/')
-            return Identifier(split.last(), split.dropLast(1).joinToString(".").ifBlank { null })
+            val split = string.split(SEPARATOR)
+            return Identifier(split.last(), if (split.size == 2) split.first() else null)
         }
     }
 
     override fun toString(): String {
-        return if (pkg == null) name else "$pkg/$name"
+        return if (pkg == null) name else "$pkg$SEPARATOR$name"
     }
 }
 

@@ -8,6 +8,7 @@ import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
+import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements

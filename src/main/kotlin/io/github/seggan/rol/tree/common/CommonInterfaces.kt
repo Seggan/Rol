@@ -4,8 +4,14 @@ interface Reference {
     val name: String
 }
 
-interface Struct {
+interface AClass {
     val name: Identifier
     val fields: Map<String, Type>
-    val const: Boolean
+    val methods: Map<String, AFunction>
+}
+
+interface AFunction {
+    val name: String
+    val parameters: List<Type>
+    val returnType: Type
 }

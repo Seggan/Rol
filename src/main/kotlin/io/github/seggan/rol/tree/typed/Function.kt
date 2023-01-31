@@ -5,6 +5,7 @@ import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.VoidType
 
 sealed class TFn(
     val name: Identifier,
@@ -55,7 +56,7 @@ class TExternDeclaration(
 }
 
 class TReturn(val value: TExpression?, location: Location) :
-    TNode(value?.type ?: Type.VOID, listOfNotNull(value), location) {
+    TNode(value?.type ?: VoidType, listOfNotNull(value), location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
         return visitor.visitReturn(this)
     }

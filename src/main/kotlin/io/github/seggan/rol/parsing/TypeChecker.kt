@@ -1,12 +1,14 @@
 package io.github.seggan.rol.parsing
 
-import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
+import io.github.seggan.rol.resolution.DependencyManager
+import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
-import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.VoidType
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
@@ -50,7 +52,7 @@ import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
 
 class TypeChecker(
-    private val dependencyManager: DependencyManager,
+    dependencyManager: DependencyManager,
     private val imports: Set<String>,
     private val pkg: String
 ) {
@@ -58,6 +60,7 @@ class TypeChecker(
     private val stack = ArrayDeque<StackFrame>()
     private val currentFrame get() = stack.first()
     private val typedFunctions = mutableSetOf<FunctionHeader>()
+    private val resolver = TypeResolver(dependencyManager, pkg)
 
     fun typeAst(ast: UStatements): TStatements {
         val current = ast.children.toMutableList()
@@ -66,8 +69,8 @@ class TypeChecker(
             typedFunctions.add(
                 FunctionHeader(
                     node.name.name,
-                    node.args.map { it.copy(type = locateType(it.type, it.location)) },
-                    locateType(node.type, node.location)
+                    node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) },
+                    resolver.resolveType(node.type, node.location)
                 )
             )
         }
@@ -90,8 +93,8 @@ class TypeChecker(
 
     private fun typeIfStatement(node: UIfStatement): TIfStatement {
         val condition = typeExpression(node.cond)
-        if (!Type.BOOLEAN.isAssignableFrom(condition.type)) {
-            Errors.typeMismatch(Type.BOOLEAN, condition.type, condition.location)
+        if (!ConcreteType.BOOLEAN.isAssignableFrom(condition.type)) {
+            Errors.typeMismatch(ConcreteType.BOOLEAN, condition.type, condition.location)
         }
         val body = typeStatements(node.ifTrue)
         val elseBody = node.ifFalse?.let { typeStatements(it) }
@@ -99,8 +102,8 @@ class TypeChecker(
     }
 
     private fun typeFunctionDeclaration(node: UFunctionDef): TFunctionDeclaration {
-        val args = node.args.map { it.copy(type = locateType(it.type, it.location)) }
-        val type = locateType(node.type, node.location)
+        val args = node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) }
+        val type = resolver.resolveType(node.type, node.location)
         return TFunctionDeclaration(
             node.name.copy(pkg = pkg),
             args,
@@ -121,10 +124,10 @@ class TypeChecker(
     private fun typeExternDeclaration(declaration: UExternDeclaration): TExternDeclaration {
         return TExternDeclaration(
             declaration.name.copy(pkg = pkg),
-            declaration.args.map { it.copy(type = locateType(it.type, it.location)) },
+            declaration.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) },
             declaration.modifiers,
             declaration.body,
-            locateType(declaration.type, declaration.location),
+            resolver.resolveType(declaration.type, declaration.location),
             declaration.location
         )
     }
@@ -182,20 +185,20 @@ class TypeChecker(
         } else {
             // special handling for string concat
             if (expr.type == UBinaryOperator.PLUS) {
-                if (Type.STRING.isAssignableFrom(left.type)) {
-                    if (Type.STRING.isAssignableFrom(right.type)) {
+                if (ConcreteType.STRING.isAssignableFrom(left.type)) {
+                    if (ConcreteType.STRING.isAssignableFrom(right.type)) {
                         return TBinaryExpression(left, right, TBinaryOperator.CONCAT, expr.location)
                     } else {
-                        Errors.typeMismatch(Type.STRING, right.type, right.location)
+                        Errors.typeMismatch(ConcreteType.STRING, right.type, right.location)
                     }
-                } else if (Type.NUMBER.isAssignableFrom(left.type)) {
-                    if (Type.NUMBER.isAssignableFrom(right.type)) {
+                } else if (ConcreteType.NUMBER.isAssignableFrom(left.type)) {
+                    if (ConcreteType.NUMBER.isAssignableFrom(right.type)) {
                         return TBinaryExpression(left, right, TBinaryOperator.PLUS, expr.location)
                     } else {
-                        Errors.typeMismatch(Type.NUMBER, right.type, right.location)
+                        Errors.typeMismatch(ConcreteType.NUMBER, right.type, right.location)
                     }
                 } else {
-                    Errors.typeMismatch(Type.STRING, left.type, left.location)
+                    Errors.typeMismatch(ConcreteType.STRING, left.type, left.location)
                 }
             } else {
                 throw AssertionError() // should never happen
@@ -208,10 +211,10 @@ class TypeChecker(
         val op = expr.type.typedOperator
         if (op == null) {
             // can be replaced with a subtraction
-            if (Type.NUMBER.isAssignableFrom(operand.type)) {
+            if (ConcreteType.NUMBER.isAssignableFrom(operand.type)) {
                 return TBinaryExpression(TNumber(-1, expr.location), operand, TBinaryOperator.MINUS, expr.location)
             } else {
-                Errors.typeMismatch(Type.NUMBER, operand.type, operand.location)
+                Errors.typeMismatch(ConcreteType.NUMBER, operand.type, operand.location)
             }
         } else {
             if (op.argType.isAssignableFrom(operand.type)) {
@@ -253,7 +256,7 @@ class TypeChecker(
                 )
             }
         } else {
-            return TVarDef(name, locateType(type, decl.location), decl.modifiers, decl.location)
+            return TVarDef(name, resolver.resolveType(type, decl.location), decl.modifiers, decl.location)
         }
     }
 
@@ -272,81 +275,31 @@ class TypeChecker(
         val name = call.fname
         val args = call.args.map { typeExpression(it) }
         if (name.pkg != null) {
-            val returnType = isIn(name.pkg, name.name, args.map(TNode::type))
+            val returnType = resolver.findFunction(name.pkg, name.name, args.map(TNode::type), call.location)
             if (returnType != null) {
                 return TFunctionCall(name.copy(pkg = name.pkg), args, returnType, call.location)
             }
         } else {
-            funcLoop@ for (func in typedFunctions.filter { it.name == name.name }) {
-                if (func.args.size == args.size) {
-                    for (i in args.indices) {
-                        if (!func.args[i].type.isAssignableFrom(args[i].type)) {
-                            continue@funcLoop
-                        }
-                    }
-                    return TFunctionCall(name.copy(pkg = pkg), args, func.returnType, call.location)
-                }
-            }
-            for (import in imports) {
-                val returnType = isIn(import, name.name, args.map(TNode::type))
-                if (returnType != null) {
-                    return TFunctionCall(name.copy(pkg = import), args, returnType, call.location)
-                }
-            }
+
         }
         val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.toString() }
         Errors.undefinedReference(errorName, call.location)
     }
 
-    private fun isIn(pack: String, name: String, args: List<Type>): Type? {
-        for (dep in dependencyManager.getPackage(pack)) {
-            val func = dep.findFunction(name, args)
-            if (func != null) {
-                dependencyManager.usedDependencies.add(dep)
-                return func.returnType
-            }
-        }
-        return null
-    }
-
     private fun typeStatements(
         statements: UStatements,
         extraVars: List<TVarDef> = emptyList(),
-        returnType: Type = if (stack.isEmpty()) Type.VOID else currentFrame.returnType
+        returnType: Type = if (stack.isEmpty()) VoidType else currentFrame.returnType
     ): TStatements {
         val vars = if (stack.isEmpty()) mutableListOf() else currentFrame.vars
         vars.addAll(extraVars)
         stack.addFirst(StackFrame(vars, statements, returnType))
         return TStatements(statements.children.map(::type), statements.location).also { stack.removeFirst() }
     }
-
-    private fun locateType(t: Type, location: Location): Type {
-        if (t.isPrimitive) return t
-        if (t.name.pkg != null) {
-            for (dep in dependencyManager.getPackage(t.name.pkg)) {
-                val found = dep.findStruct(t.name.name)
-                if (found != null) {
-                    dependencyManager.usedDependencies.add(dep)
-                    return t // the struct is already qualified
-                }
-            }
-        } else {
-            for (import in imports) {
-                for (dep in dependencyManager.getPackage(import)) {
-                    val found = dep.findStruct(t.name.name)
-                    if (found != null) {
-                        dependencyManager.usedDependencies.add(dep)
-                        return t.copy(name = t.name.copy(pkg = import))
-                    }
-                }
-            }
-        }
-        Errors.undefinedReference(t.name.toString(), location)
-    }
 }
 
 private fun checkVoid(expr: TExpression): TExpression {
-    if (expr is TFunctionCall && expr.type == Type.VOID) {
+    if (expr is TFunctionCall && expr.type == VoidType) {
         Errors.genericError(
             "Type inference",
             "The non-returning function ${expr.field} cannot be used in an expression",

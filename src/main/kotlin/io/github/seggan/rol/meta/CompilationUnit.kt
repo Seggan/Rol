@@ -14,6 +14,8 @@ sealed interface CompilationUnit<D> {
         const val VERSION = 1
     }
 
+    val simpleName: String
+
     fun serialize(): D
 }
 
@@ -22,13 +24,16 @@ sealed interface CompilationUnitParser<T, D> {
 }
 
 data class FileUnit(
-    val name: String,
+    override val simpleName: String,
     val pkg: String,
+    val dependencies: Set<String>,
     val functions: Set<FunctionUnit>,
     val variables: Set<VariableUnit>,
-    val structs: Set<ClassUnit>,
+    val classes: Set<ClassUnit>,
+    val interfaces: Set<InterfaceUnit>,
     val text: String
 ) : CompilationUnit<String> {
+
     companion object : CompilationUnitParser<FileUnit?, Path> {
         override fun parse(version: Int, data: Path): FileUnit? {
             if (data.extension != "lua") return null
@@ -39,15 +44,17 @@ data class FileUnit(
             return when (ver) {
                 1 -> parseV1(meta)
                 else -> null
-            }?.copy(name = data.nameWithoutExtension, text = code)
+            }?.copy(simpleName = data.nameWithoutExtension, text = code)
         }
 
         private fun parseV1(data: JsonObject): FileUnit {
             val pkg = data.string("package") ?: "unnamed"
+            val dependencies = data.array<String>("dependencies")!!.toSet()
             val functions = data.array<JsonObject>("functions")!!.map { FunctionUnit.parse(1, it) }.toSet()
             val variables = data.array<JsonObject>("variables")!!.map { VariableUnit.parse(1, it) }.toSet()
-            val structs = data.array<JsonObject>("structs")!!.map { ClassUnit.parse(1, it) }.toSet()
-            return FileUnit("", pkg, functions, variables, structs, "")
+            val classes = data.array<JsonObject>("classes")!!.map { ClassUnit.parse(1, it) }.toSet()
+            val interfaces = data.array<JsonObject>("interfaces")!!.map { InterfaceUnit.parse(1, it) }.toSet()
+            return FileUnit("", pkg, dependencies, functions, variables, classes, interfaces, "")
         }
     }
 
@@ -56,9 +63,10 @@ data class FileUnit(
             mapOf(
                 "version" to CompilationUnit.VERSION,
                 "package" to pkg,
+                "dependencies" to dependencies.toList(),
                 "functions" to functions.map(FunctionUnit::serialize),
                 "variables" to variables.map(VariableUnit::serialize),
-                "structs" to structs.map(ClassUnit::serialize)
+                "structs" to classes.map(ClassUnit::serialize)
             )
         ).toJsonString()
         return "-- ROLMETA $obj\npackage.path = \"./?.lua;\" .. package.path\nrequire \"rol_core\"\n$text"
@@ -66,13 +74,20 @@ data class FileUnit(
 
     fun findFunction(name: String, args: List<Type>): FunctionUnit? {
         return functions.find {
-            it.name == name && it.args.size == args.size && it.args.values.zip(args)
+            it.name == name && it.parameters.size == args.size && it.parameters.zip(args)
                 .all { (a, b) -> a.isAssignableFrom(b) }
         }
     }
 
-    fun findStruct(name: String): ClassUnit? {
-        return structs.find { it.name.name == name }
+    fun findClass(name: String): CompilationUnit<*>? {
+        return classes.find { it.name.name == name } ?: interfaces.find { it.name.name == name }
+    }
+
+    fun findSubunits(obj: String): List<CompilationUnit<*>> {
+        return variables.filter { it.name == obj } +
+                functions.filter { it.name == obj } +
+                classes.filter { it.name.name == obj } +
+                interfaces.filter { it.name.name == obj }
     }
 }
 

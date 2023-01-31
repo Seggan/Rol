@@ -161,7 +161,7 @@ type
 
 // identifier and soft keywords
 identifier
-    : (package SLASH)? name=(Identifier
+    : (package COLON)? name=(Identifier
     | CONST
     | EXTERN
     | INIT)

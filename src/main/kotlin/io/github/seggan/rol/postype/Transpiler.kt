@@ -1,8 +1,8 @@
 package io.github.seggan.rol.postype
 
-import io.github.seggan.rol.DependencyManager
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.meta.FunctionUnit
+import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
