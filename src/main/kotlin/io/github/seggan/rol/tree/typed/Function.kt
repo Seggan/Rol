@@ -14,13 +14,17 @@ sealed class TFn(
     val modifiers: Modifiers,
     children: List<TNode>,
     location: Location
-) :
-    TNode(type, children, location) {
+) : TNode(type, children, location) {
 
-    fun matches(name: String, args: List<TNode>): Boolean {
+    fun matches(name: String, args: List<Type>): Boolean {
         return this.name.name == name && this.args.size == args.size && this.args.zip(args).all { (targ, arg) ->
-            targ.type.isAssignableFrom(arg.type)
+            targ.type.isAssignableFrom(arg)
         }
+    }
+
+    @JvmName("nodeMatches")
+    fun matches(name: String, args: List<TNode>): Boolean {
+        return matches(name, args.map(TNode::type))
     }
 
     fun matches(name: Identifier, args: List<TNode>): Boolean {

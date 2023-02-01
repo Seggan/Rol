@@ -66,7 +66,8 @@ data class FileUnit(
                 "dependencies" to dependencies.toList(),
                 "functions" to functions.map(FunctionUnit::serialize),
                 "variables" to variables.map(VariableUnit::serialize),
-                "structs" to classes.map(ClassUnit::serialize)
+                "classes" to classes.map(ClassUnit::serialize),
+                "interfaces" to interfaces.map(InterfaceUnit::serialize)
             )
         ).toJsonString()
         return "-- ROLMETA $obj\npackage.path = \"./?.lua;\" .. package.path\nrequire \"rol_core\"\n$text"
@@ -84,7 +85,7 @@ data class FileUnit(
     }
 
     fun findSubunits(obj: String): List<CompilationUnit<*>> {
-        return variables.filter { it.name == obj } +
+        return variables.filter { it.simpleName == obj } +
                 functions.filter { it.name == obj } +
                 classes.filter { it.name.name == obj } +
                 interfaces.filter { it.name.name == obj }

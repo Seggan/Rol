@@ -14,11 +14,18 @@ import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.UnresolvedType
 import io.github.seggan.rol.tree.common.toType
 
-class TypeResolver(private val manager: DependencyManager, private val pkg: String) {
+class TypeResolver(private val manager: DependencyManager, private val pkg: String, private val imports: Set<String>) {
 
     private val resolvedTypes = mutableMapOf<Identifier, ResolvedType>()
 
+    private val localFunctions = mutableSetOf<FunctionHeader>()
+
+    fun registerFunctionHeader(header: FunctionHeader) {
+        localFunctions.add(header)
+    }
+
     fun resolveType(type: Type, location: Location): Type {
+        checkPackage(type.name.pkg, location)
         val (result, unit) = resolveTypeInternal(type, location)
         if (unit != null) {
             manager.usedDependencies.add(unit)
@@ -96,12 +103,20 @@ class TypeResolver(private val manager: DependencyManager, private val pkg: Stri
         ).also { resolvedTypes[clazz.name] = it }
     }
 
-    fun findFunction(pkg: String?, name: String, args: List<Type>, location: Location): Type? {
+    fun findFunction(pkg: String?, name: String, args: List<Type>, location: Location): Pair<String?, Type>? {
+        checkPackage(pkg, location)
+        if (pkg == null || pkg == this.pkg) {
+            for (func in localFunctions) {
+                if (func.matches(name, args)) {
+                    return pkg to func.returnType
+                }
+            }
+        }
         if (pkg == null) {
             for ((unit, pack) in manager.getExplicitlyImported(name)) {
                 if (unit is FunctionUnit) {
                     manager.usedDependencies.add(pack)
-                    return resolveTypeInternal(unit.returnType, location).first
+                    return pack.pkg to resolveTypeInternal(unit.returnType, location).first
                 }
             }
         } else {
@@ -109,10 +124,20 @@ class TypeResolver(private val manager: DependencyManager, private val pkg: Stri
                 val func = dep.findFunction(name, args)
                 if (func != null) {
                     manager.usedDependencies.add(dep)
-                    return resolveTypeInternal(func.returnType, location).first
+                    return pkg to resolveTypeInternal(func.returnType, location).first
                 }
             }
         }
         return null
+    }
+
+    private fun checkPackage(pkg: String?, location: Location) {
+        if (pkg != null && pkg != this.pkg && pkg !in imports) {
+            Errors.genericError(
+                "Resolution",
+                "Cannot find package $pkg",
+                location
+            )
+        }
     }
 }

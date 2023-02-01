@@ -2,10 +2,11 @@ package io.github.seggan.rol.parsing
 
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.resolution.DependencyManager
+import io.github.seggan.rol.resolution.FunctionHeader
 import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.common.AccessModifier
-import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.ConcreteType
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.VoidType
@@ -53,20 +54,19 @@ import io.github.seggan.rol.tree.untyped.UVariableAccess
 
 class TypeChecker(
     dependencyManager: DependencyManager,
-    private val imports: Set<String>,
+    imports: Set<String>,
     private val pkg: String
 ) {
 
     private val stack = ArrayDeque<StackFrame>()
     private val currentFrame get() = stack.first()
-    private val typedFunctions = mutableSetOf<FunctionHeader>()
-    private val resolver = TypeResolver(dependencyManager, pkg)
+    private val resolver = TypeResolver(dependencyManager, pkg, imports)
 
     fun typeAst(ast: UStatements): TStatements {
         val current = ast.children.toMutableList()
         val flat = ast.flatten()
         for (node in flat.filterIsInstance<UFn>()) {
-            typedFunctions.add(
+            resolver.registerFunctionHeader(
                 FunctionHeader(
                     node.name.name,
                     node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) },
@@ -274,16 +274,13 @@ class TypeChecker(
     private fun typeFunctionCall(call: UFunctionCall): TFunctionCall {
         val name = call.fname
         val args = call.args.map { typeExpression(it) }
-        if (name.pkg != null) {
-            val returnType = resolver.findFunction(name.pkg, name.name, args.map(TNode::type), call.location)
-            if (returnType != null) {
-                return TFunctionCall(name.copy(pkg = name.pkg), args, returnType, call.location)
-            }
+        val returnType = resolver.findFunction(name.pkg, name.name, args.map(TNode::type), call.location)
+        if (returnType == null) {
+            val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.toString() }
+            Errors.undefinedReference(errorName, call.location)
         } else {
-
+            return TFunctionCall(Identifier(name.name, returnType.first), args, returnType.second, call.location)
         }
-        val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.toString() }
-        Errors.undefinedReference(errorName, call.location)
     }
 
     private fun typeStatements(
@@ -311,4 +308,3 @@ private fun checkVoid(expr: TExpression): TExpression {
 
 private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements, val returnType: Type)
 
-private data class FunctionHeader(val name: String, val args: List<Argument>, val returnType: Type)

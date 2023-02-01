@@ -1,7 +1,6 @@
 package io.github.seggan.rol.tree.common
 
 import io.github.seggan.rol.antlr.RolParser
-import io.github.seggan.rol.resolution.DependencyManager
 
 sealed class Type(val name: Identifier, val nullable: Boolean = false) {
 
@@ -50,6 +49,10 @@ sealed class Type(val name: Identifier, val nullable: Boolean = false) {
         var result = name.hashCode()
         result = 31 * result + nullable.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return name.toString() + if (nullable) "?" else ""
     }
 }
 
@@ -129,8 +132,8 @@ class UnresolvedType(name: Identifier, nullable: Boolean = false) : Type(name, n
     override fun nonNullable(): UnresolvedType = if (nullable) UnresolvedType(name) else this
     override fun nullable(): UnresolvedType = if (nullable) this else UnresolvedType(name, true)
 
-    fun resolve(manager: DependencyManager): Type {
-        TODO()
+    override fun toString(): String {
+        return "UNRESOLVED/" + super.toString()
     }
 }
 

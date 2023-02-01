@@ -41,7 +41,7 @@ ENUM: 'enum';
 INST: 'inst';
 
 PACKAGE: 'package';
-IMPORT: 'import';
+USING: 'using';
 
 PRIVATE: 'private';
 DYN: 'dyn';

@@ -91,25 +91,6 @@ open class TypedTreeVisitor<R> {
         return defaultValue(statement)
     }
 
-    open fun visitStructDeclaration(declaration: TStruct): R {
-        declaration.fieldNodes.forEach(::visit)
-        return defaultValue(declaration)
-    }
-
-    open fun visitField(field: TField): R {
-        return defaultValue(field)
-    }
-
-    open fun visitStructInit(init: TStructInit): R {
-        init.fields.forEach(::visit)
-        return defaultValue(init)
-    }
-
-    open fun visitFieldInit(init: TFieldInit): R {
-        visit(init.value)
-        return defaultValue(init)
-    }
-
     open fun visitAccess(access: TAccess): R {
         visit(access.target)
         return defaultValue(access)

@@ -1,9 +1,9 @@
 package io.github.seggan.rol.tree.typed
 
 import io.github.seggan.rol.tree.common.Location
-import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.VoidType
 
-sealed class ControlStatement(children: List<TNode>, location: Location) : TNode(Type.VOID, children, location)
+sealed class ControlStatement(children: List<TNode>, location: Location) : TNode(VoidType, children, location)
 
 class TIfStatement(
     val condition: TExpression,

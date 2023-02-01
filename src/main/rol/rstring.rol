@@ -1,0 +1,5 @@
+package rol
+
+extern fun subs(s: String, starti: Number, endi: Number): String = """
+    return string.sub(s, starti + 1, endi)
+"""

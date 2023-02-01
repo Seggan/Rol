@@ -1,7 +1,0 @@
-package rol.lang
-
-struct DynamicList {}
-
-extern fun get(list: DynamicList, index: Num): dyn? = "return list[index]"
-
-extern fun set(list: DynamicList, index: Num, value: dyn) = "list[index] = value"

@@ -1,5 +1,0 @@
-package rol.lang
-
-extern fun subs(s: String, starti: Num, endi: Num): String = """
-    return string.sub(s, starti + 1, endi)
-"""

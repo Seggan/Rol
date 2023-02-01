@@ -1,5 +1,7 @@
 package io.github.seggan.rol.tree.typed
 
+import io.github.seggan.rol.tree.common.AnyType
+import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
 
@@ -27,28 +29,28 @@ class TBinaryExpression(
 }
 
 enum class TBinaryOperator(val op: String, val argType: Type, val resultType: Type = argType) {
-    PLUS("+", Type.NUMBER),
-    CONCAT("..", Type.STRING),
-    MINUS("-", Type.NUMBER),
-    MULTIPLY("*", Type.NUMBER),
-    DIVIDE("/", Type.NUMBER),
-    MODULO("%", Type.NUMBER),
+    PLUS("+", ConcreteType.NUMBER),
+    CONCAT("..", ConcreteType.STRING),
+    MINUS("-", ConcreteType.NUMBER),
+    MULTIPLY("*", ConcreteType.NUMBER),
+    DIVIDE("/", ConcreteType.NUMBER),
+    MODULO("%", ConcreteType.NUMBER),
 
-    EQUALS("==", Type.ANY, Type.BOOLEAN),
-    NOT_EQUALS("~=", Type.ANY, Type.BOOLEAN),
-    GREATER_THAN(">", Type.NUMBER, Type.BOOLEAN),
-    LESS_THAN("<", Type.NUMBER, Type.BOOLEAN),
-    GREATER_THAN_OR_EQUALS(">=", Type.NUMBER, Type.BOOLEAN),
-    LESS_THAN_OR_EQUALS("<=", Type.NUMBER, Type.BOOLEAN),
+    EQUALS("==", AnyType, ConcreteType.BOOLEAN),
+    NOT_EQUALS("~=", AnyType, ConcreteType.BOOLEAN),
+    GREATER_THAN(">", ConcreteType.NUMBER, ConcreteType.BOOLEAN),
+    LESS_THAN("<", ConcreteType.NUMBER, ConcreteType.BOOLEAN),
+    GREATER_THAN_OR_EQUALS(">=", ConcreteType.NUMBER, ConcreteType.BOOLEAN),
+    LESS_THAN_OR_EQUALS("<=", ConcreteType.NUMBER, ConcreteType.BOOLEAN),
 
-    AND("and", Type.BOOLEAN, Type.BOOLEAN),
-    OR("or", Type.BOOLEAN, Type.BOOLEAN),
+    AND("and", ConcreteType.BOOLEAN, ConcreteType.BOOLEAN),
+    OR("or", ConcreteType.BOOLEAN, ConcreteType.BOOLEAN),
 
-    BITWISE_AND("bitwiseAnd", Type.NUMBER, Type.NUMBER),
-    BITWISE_OR("bitwiseOr", Type.NUMBER, Type.NUMBER),
-    BITWISE_XOR("bitwiseXor", Type.NUMBER, Type.NUMBER),
-    BITWISE_SHIFT_LEFT("bitwiseLeftShift", Type.NUMBER, Type.NUMBER),
-    BITWISE_SHIFT_RIGHT("bitwiseRightShift", Type.NUMBER, Type.NUMBER);
+    BITWISE_AND("bitwiseAnd", ConcreteType.NUMBER, ConcreteType.NUMBER),
+    BITWISE_OR("bitwiseOr", ConcreteType.NUMBER, ConcreteType.NUMBER),
+    BITWISE_XOR("bitwiseXor", ConcreteType.NUMBER, ConcreteType.NUMBER),
+    BITWISE_SHIFT_LEFT("bitwiseLeftShift", ConcreteType.NUMBER, ConcreteType.NUMBER),
+    BITWISE_SHIFT_RIGHT("bitwiseRightShift", ConcreteType.NUMBER, ConcreteType.NUMBER);
 }
 
 class TPrefixExpression(val right: TExpression, val operator: TPrefixOperator, location: Location) :
@@ -59,12 +61,12 @@ class TPrefixExpression(val right: TExpression, val operator: TPrefixOperator, l
 }
 
 enum class TPrefixOperator(val op: String, val argType: Type, val resultType: Type = argType) {
-    NOT("not ", Type.BOOLEAN),
+    NOT("not ", ConcreteType.BOOLEAN),
 
     // bitwise not is always replaced with a subtraction
-    INC("", Type.NUMBER),
-    DEC("", Type.NUMBER),
-    MINUS("-", Type.NUMBER);
+    INC("", ConcreteType.NUMBER),
+    DEC("", ConcreteType.NUMBER),
+    MINUS("-", ConcreteType.NUMBER);
 }
 
 class TPostfixExpression(val left: TExpression, val operator: TPostfixOperator, type: Type, location: Location) :
@@ -75,7 +77,7 @@ class TPostfixExpression(val left: TExpression, val operator: TPostfixOperator, 
 }
 
 enum class TPostfixOperator(val typer: (Type) -> Type?, val expect: Type) {
-    INC({ if (it == Type.NUMBER) Type.NUMBER else null }, Type.NUMBER),
-    DEC({ if (it == Type.NUMBER) Type.NUMBER else null }, Type.NUMBER),
-    ASSERT_NON_NULL({ it.copy(nullable = false) }, Type.ANY);
+    INC({ if (it == ConcreteType.NUMBER) ConcreteType.NUMBER else null }, ConcreteType.NUMBER),
+    DEC({ if (it == ConcreteType.NUMBER) ConcreteType.NUMBER else null }, ConcreteType.NUMBER),
+    ASSERT_NON_NULL({ it.nonNullable() }, AnyType);
 }

@@ -1,4 +1,4 @@
-package rol.lang
+package rol
 
 extern fun print(s: dyn?) = """
     if s == nil then
@@ -12,6 +12,6 @@ extern fun readLine(): String = """
     return io.read("*l")
 """
 
-extern fun readNumber(): Num = """
+extern fun readNumber(): Number = """
     return io.read("*n")
 """

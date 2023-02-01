@@ -61,7 +61,7 @@ class Transpiler(
             override fun visitFunctionDeclaration(declaration: TFunctionDeclaration) {
                 val mangled = StringBuilder(mangle(declaration.name.toString(), declaration.type))
                 for (arg in declaration.args) {
-                    mangled.append(mangle(arg.name, arg.type))
+                    mangled.append(mangle(arg.type))
                 }
                 functions[declaration] = mangled.toString()
             }
@@ -69,7 +69,7 @@ class Transpiler(
             override fun visitExternDeclaration(declaration: TExternDeclaration) {
                 val mangled = StringBuilder(mangle(declaration.name.toString(), declaration.type))
                 for (arg in declaration.args) {
-                    mangled.append(mangle(arg.name, arg.type))
+                    mangled.append(mangle(arg.type))
                 }
                 functions[declaration] = mangled.toString()
             }
@@ -197,9 +197,12 @@ private val bitwiseOps = EnumSet.of(
 
 private val regex = "\\W".toRegex()
 
+private fun mangle(type: Type): String {
+    return regex.replace(type.hashCode().toString(16).take(6), "_")
+}
+
 private fun mangle(name: String, type: Type): String {
-    val mangled = name + type.hashCode().toString(16).take(6) + name.hashCode().toString(16).take(6)
-    return regex.replace(mangled, "_")
+    return regex.replace(name, "_") + mangle(type)
 }
 
 private fun LNode.toStatements(): LStatements {

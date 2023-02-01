@@ -3,7 +3,7 @@ parser grammar RolParser;
 options { tokenVocab = RolLexer; }
 
 file
-    : packageStatement? NL* (IMPORT package NL*)* statements EOF
+    : packageStatement? NL* (usingStatement | usingInStatement | NL)* statements EOF
     ;
 
 packageStatement
@@ -11,7 +11,15 @@ packageStatement
     ;
 
 package
-    : Identifier (DOT Identifier)*
+    : unqualifiedIdentifier (DOT unqualifiedIdentifier)*
+    ;
+
+usingStatement
+    : USING package
+    ;
+
+usingInStatement
+    : USING NL* unqualifiedIdentifier NL* (COMMA unqualifiedIdentifier)* NL* IN package
     ;
 
 statements: (statement (NL | SEMICOLON)+)* statement?;
@@ -52,7 +60,7 @@ argList
     ;
 
 arg
-    : Identifier COLON NL* type
+    : unqualifiedIdentifier COLON NL* type
     ;
 
 classDeclaration
@@ -161,10 +169,14 @@ type
 
 // identifier and soft keywords
 identifier
-    : (package COLON)? name=(Identifier
+    : (package COLON)? unqualifiedIdentifier
+    ;
+
+unqualifiedIdentifier
+    : Identifier
     | CONST
     | EXTERN
-    | INIT)
+    | INIT
     ;
 
 accessModifier

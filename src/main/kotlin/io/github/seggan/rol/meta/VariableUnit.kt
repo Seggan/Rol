@@ -3,7 +3,7 @@ package io.github.seggan.rol.meta
 import com.beust.klaxon.JsonObject
 import io.github.seggan.rol.tree.common.Type
 
-data class VariableUnit(val name: String, val mangled: String, val type: Type) : CompilationUnit<JsonObject> {
+data class VariableUnit(override val simpleName: String, val mangled: String, val type: Type) : CompilationUnit<JsonObject> {
     companion object : CompilationUnitParser<VariableUnit, JsonObject> {
         override fun parse(version: Int, data: JsonObject): VariableUnit {
             return when (version) {
@@ -24,7 +24,7 @@ data class VariableUnit(val name: String, val mangled: String, val type: Type) :
     override fun serialize(): JsonObject {
         return JsonObject(
             mapOf(
-                "name" to name,
+                "name" to simpleName,
                 "mangled" to mangled,
                 "type" to type.toString()
             )

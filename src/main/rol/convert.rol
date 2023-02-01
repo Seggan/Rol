@@ -1,4 +1,4 @@
-package rol.lang
+package rol
 
 extern fun toString(x: dyn?): String = """
     if x == nil then
@@ -8,4 +8,4 @@ extern fun toString(x: dyn?): String = """
     end
 """
 
-extern fun toNumber(x: String): Num = "return tonumber(x)"
+extern fun toNumber(x: String): Number = "return tonumber(x)"

@@ -4,12 +4,14 @@ import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.meta.FunctionUnit
+import io.github.seggan.rol.parsing.ImportCollector
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
 import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements
 import kotlinx.cli.ArgParser
@@ -18,7 +20,6 @@ import kotlinx.cli.multiple
 import kotlinx.cli.required
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.ParserRuleContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -75,13 +76,11 @@ fun main(args: Array<String>) {
 
     val compiledThis = theFile.resolveSibling("${theFile.nameWithoutExtension}.lua")
 
-    DEPENDENCY_MANAGER = DependencyManager(files + include.map(Path::of).filter {
+    var unit = compile(theFile, files + include.map(Path::of).filter {
         it.isRegularFile() && it.extension == "lua" && !it.isSameFileAs(compiledThis)
     })
-
-    var unit = compile(theFile)
     unit = unit.copy(text = DEPENDENCY_MANAGER.usedDependencies.joinToString("") {
-        "require \"${it.name}\"\n"
+        "require \"${it.simpleName}\"\n"
     } + unit.text)
 
     val outputName = output ?: theFile.nameWithoutExtension
@@ -96,7 +95,7 @@ fun main(args: Array<String>) {
 private lateinit var DEPENDENCY_MANAGER: DependencyManager
 lateinit var CURRENT_FILE: String
 
-fun compile(path: Path): FileUnit {
+fun compile(path: Path, files: List<Path>): FileUnit {
     // temporarily replace STDERR to catch ANTLR errors
     val stderr = System.err
     val newErr = ByteArrayOutputStream()
@@ -115,14 +114,15 @@ fun compile(path: Path): FileUnit {
     }
 
     val pkg = parsed.packageStatement()?.package_()?.text ?: "unnamed"
-    val imports = parsed.package_().map(ParserRuleContext::getText).union(
-        setOfNotNull(
-            if (pkg == "rol.lang") null else "rol.lang"
-        )
-    )
 
     val ast = parsed.accept(RolVisitor()) as UStatements
-    var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, imports, pkg).typeAst(ast)
+
+    val collector = ImportCollector()
+    parsed.accept(collector)
+
+    DEPENDENCY_MANAGER = DependencyManager(files, collector.explicitImports + ("rol" to setOf()))
+
+    var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, collector.imports, pkg).typeAst(ast)
     var folder: ConstantFolder
     do {
         folder = ConstantFolder()
@@ -134,17 +134,17 @@ fun compile(path: Path): FileUnit {
     return FileUnit(
         path.nameWithoutExtension,
         pkg,
+        collector.imports + collector.explicitImports.keys,
         transpiler.functions.mapNotNullTo(HashSet()) {
             if (it.key.modifiers.access == AccessModifier.PUBLIC) {
-                FunctionUnit(it.key.name.name, it.value, it.key.args.associateTo(LinkedHashMap()) { a ->
-                    a.name to a.type
-                }, it.key.type)
+                FunctionUnit(it.key.name.name, it.value, it.key.args.map(Argument::type), it.key.type)
             } else {
                 null
             }
         },
         setOf(),
-        transpiler.structs.mapNotNullTo(HashSet()) { null /* TODO */ },
+        setOf(),
+        setOf(),
         transpiledAst.transpile()
     )
 }

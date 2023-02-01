@@ -158,7 +158,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UFunctionDef {
         return UFunctionDef(
             Identifier.fromNode(ctx.identifier()),
-            ctx.argList().arg().map { Argument(it.Identifier().text, it.type().toType(), it.location) },
+            ctx.argList().arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) },
             Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
             visit(ctx.block()).asStatements(),
             if (ctx.type() == null) VoidType else ctx.type().toType(),
@@ -169,7 +169,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     override fun visitExternDeclaration(ctx: RolParser.ExternDeclarationContext): UExternDeclaration {
         return UExternDeclaration(
             Identifier.fromNode(ctx.identifier()),
-            ctx.argList().arg().map { Argument(it.Identifier().text, it.type().toType(), it.location) },
+            ctx.argList().arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) },
             Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
             parseString(ctx.string()).trim('\n'),
             if (ctx.type() == null) VoidType else ctx.type().toType(),

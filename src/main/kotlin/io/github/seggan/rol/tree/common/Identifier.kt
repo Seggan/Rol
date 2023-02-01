@@ -9,7 +9,7 @@ data class Identifier(val name: String, val pkg: String? = null) {
         private val SEPARATOR = ':'
 
         fun fromNode(node: RolParser.IdentifierContext): Identifier {
-            return Identifier(node.name.text, node.package_()?.text)
+            return Identifier(node.unqualifiedIdentifier().text, node.package_()?.text)
         }
 
         fun parseString(string: String): Identifier {
