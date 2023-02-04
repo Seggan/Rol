@@ -4,7 +4,6 @@ import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TFunctionCall
-import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TPostfixExpression
@@ -47,17 +46,6 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
             expression.operator,
             expression.type,
             expression.location
-        )
-    }
-
-    override fun visitFunctionDeclaration(declaration: TFunctionDeclaration): TNode {
-        return TFunctionDeclaration(
-            declaration.name,
-            declaration.args,
-            declaration.type,
-            declaration.modifiers,
-            visit(declaration.body) as TStatements,
-            declaration.location
         )
     }
 

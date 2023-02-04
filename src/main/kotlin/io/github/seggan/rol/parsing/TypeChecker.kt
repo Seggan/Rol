@@ -3,7 +3,6 @@ package io.github.seggan.rol.parsing
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.postype.NodeCollector
 import io.github.seggan.rol.resolution.DependencyManager
-import io.github.seggan.rol.resolution.FunctionHeader
 import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.ConcreteType
@@ -15,9 +14,7 @@ import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TExpression
-import io.github.seggan.rol.tree.typed.TExternDeclaration
 import io.github.seggan.rol.tree.typed.TFunctionCall
-import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TLiteral
@@ -36,10 +33,7 @@ import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UExpression
-import io.github.seggan.rol.tree.untyped.UExternDeclaration
-import io.github.seggan.rol.tree.untyped.UFn
 import io.github.seggan.rol.tree.untyped.UFunctionCall
-import io.github.seggan.rol.tree.untyped.UFunctionDef
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.ULiteral
@@ -66,18 +60,7 @@ class TypeChecker(
     private val resolver = TypeResolver(dependencyManager, pkg, imports)
 
     fun typeAst(ast: UStatements): TStatements {
-        val current = ast.children.toMutableList()
-        val flat = ast.flatten()
-        for (node in flat.filterIsInstance<UFn>()) {
-            resolver.registerFunctionHeader(
-                FunctionHeader(
-                    node.name.name,
-                    node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) },
-                    resolver.resolveType(node.type, node.location)
-                )
-            )
-        }
-        return typeStatements(UStatements(current))
+        return typeStatements(ast)
     }
 
     private fun type(node: UNode): TNode {
@@ -86,8 +69,6 @@ class TypeChecker(
             is UExpression -> typeExpression(node)
             is UVarDef -> typeVariableDeclaration(node).also { currentFrame.vars.add(it) }
             is UVarAssign -> typeVariableAssignment(node)
-            is UExternDeclaration -> typeExternDeclaration(node)
-            is UFunctionDef -> typeFunctionDeclaration(node)
             is UReturn -> typeReturn(node)
             is UIfStatement -> typeIfStatement(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
@@ -104,37 +85,6 @@ class TypeChecker(
         return TIfStatement(condition, body, elseBody, node.location)
     }
 
-    private fun typeFunctionDeclaration(node: UFunctionDef): TFunctionDeclaration {
-        val args = node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) }
-        val type = resolver.resolveType(node.type, node.location)
-        return TFunctionDeclaration(
-            node.name.copy(pkg = pkg),
-            args,
-            type,
-            node.modifiers,
-            typeStatements(node.body, args.map {
-                TVarDef(
-                    it.name, it.type, Modifiers(
-                        AccessModifier.PRIVATE,
-                        const = true
-                    ), it.location
-                )
-            }, type),
-            node.location
-        )
-    }
-
-    private fun typeExternDeclaration(declaration: UExternDeclaration): TExternDeclaration {
-        return TExternDeclaration(
-            declaration.name.copy(pkg = pkg),
-            declaration.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) },
-            declaration.modifiers,
-            declaration.body,
-            resolver.resolveType(declaration.type, declaration.location),
-            declaration.location
-        )
-    }
-
     private fun typeLambda(node: ULambda): TLambda {
         val args = node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) }
         val body = typeStatements(node.body, args.map {
@@ -147,8 +97,6 @@ class TypeChecker(
         })
         val returns = object : NodeCollector<TReturn>() {
             override fun visitReturn(ret: TReturn) = add(ret)
-            override fun visitFunctionDeclaration(declaration: TFunctionDeclaration) {}
-            override fun visitExternDeclaration(declaration: TExternDeclaration) {}
         }.collect(body)
         val returnType = returns.map(TNode::type).reduce { a, b ->
             if (a.isAssignableFrom(b)) b else if (b.isAssignableFrom(a)) a else Errors.typeMismatch(a, b, node.location)

@@ -3,15 +3,12 @@ package io.github.seggan.rol
 import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.meta.FileUnit
-import io.github.seggan.rol.meta.FunctionUnit
 import io.github.seggan.rol.parsing.ImportCollector
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
 import io.github.seggan.rol.resolution.DependencyManager
-import io.github.seggan.rol.tree.common.AccessModifier
-import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements
 import kotlinx.cli.ArgParser
@@ -135,13 +132,6 @@ fun compile(path: Path, files: List<Path>): FileUnit {
         path.nameWithoutExtension,
         pkg,
         collector.imports + collector.explicitImports.keys,
-        transpiler.functions.mapNotNullTo(HashSet()) {
-            if (it.key.modifiers.access == AccessModifier.PUBLIC) {
-                FunctionUnit(it.key.name.name, it.value, it.key.args.map(Argument::type), it.key.type)
-            } else {
-                null
-            }
-        },
         setOf(),
         setOf(),
         setOf(),

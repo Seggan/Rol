@@ -7,11 +7,10 @@ import io.github.seggan.rol.tree.common.Type
 class UClassDef(
     val name: Identifier,
     val fields: List<UFieldDef>,
-    val methods: List<UFn>,
     location: Location
-) : UNode(fields + methods, location) {
+) : UNode(fields, location) {
     override fun toString(): String {
-        return "Class($name, $fields, $methods)"
+        return "Class($name, $fields)"
     }
 }
 

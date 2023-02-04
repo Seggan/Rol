@@ -7,7 +7,6 @@ import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
-import io.github.seggan.rol.tree.common.VoidType
 import io.github.seggan.rol.tree.common.location
 import io.github.seggan.rol.tree.common.toIdentifier
 import io.github.seggan.rol.tree.common.toType
@@ -19,10 +18,8 @@ import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UClassDef
 import io.github.seggan.rol.tree.untyped.UDottedCall
 import io.github.seggan.rol.tree.untyped.UExpression
-import io.github.seggan.rol.tree.untyped.UExternDeclaration
 import io.github.seggan.rol.tree.untyped.UFieldDef
 import io.github.seggan.rol.tree.untyped.UFunctionCall
-import io.github.seggan.rol.tree.untyped.UFunctionDef
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.UNode
@@ -156,28 +153,6 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
 
     // TODO the rest
 
-    override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UFunctionDef {
-        return UFunctionDef(
-            Identifier.fromNode(ctx.identifier()),
-            ctx.argList().arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) },
-            Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
-            visit(ctx.block()).asStatements(),
-            if (ctx.type() == null) VoidType else ctx.type().toType(),
-            ctx.location
-        )
-    }
-
-    override fun visitExternDeclaration(ctx: RolParser.ExternDeclarationContext): UExternDeclaration {
-        return UExternDeclaration(
-            Identifier.fromNode(ctx.identifier()),
-            ctx.argList().arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) },
-            Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
-            parseString(ctx.string()).trim('\n'),
-            if (ctx.type() == null) VoidType else ctx.type().toType(),
-            ctx.location
-        )
-    }
-
     override fun visitReturnStatement(ctx: RolParser.ReturnStatementContext): UNode {
         return UReturn(
             if (ctx.expression() == null) null else visitExpression(ctx.expression()),
@@ -198,8 +173,6 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return UClassDef(
             ctx.identifier(0).toIdentifier(),
             ctx.fieldDeclaration().map { UFieldDef(it.identifier().toIdentifier(), it.type().toType(), it.location) },
-            ctx.functionDeclaration().map(::visitFunctionDeclaration)
-                    + ctx.externDeclaration().map(::visitExternDeclaration),
             ctx.location
         )
     }

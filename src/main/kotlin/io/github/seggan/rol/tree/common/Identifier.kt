@@ -6,7 +6,7 @@ data class Identifier(val name: String, val pkg: String? = null) {
 
     companion object {
 
-        private val SEPARATOR = ':'
+        private const val SEPARATOR = ':'
 
         fun fromNode(node: RolParser.IdentifierContext): Identifier {
             return Identifier(node.unqualifiedIdentifier().text, node.package_()?.text)

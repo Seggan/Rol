@@ -1,16 +1,11 @@
 package io.github.seggan.rol.postype
 
-import io.github.seggan.rol.Errors
-import io.github.seggan.rol.meta.FunctionUnit
 import io.github.seggan.rol.resolution.DependencyManager
-import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
 import io.github.seggan.rol.tree.lua.LBinaryExpression
 import io.github.seggan.rol.tree.lua.LExpression
-import io.github.seggan.rol.tree.lua.LExternDefinition
 import io.github.seggan.rol.tree.lua.LFunctionCall
-import io.github.seggan.rol.tree.lua.LFunctionDefinition
 import io.github.seggan.rol.tree.lua.LIfStatement
 import io.github.seggan.rol.tree.lua.LLiteral
 import io.github.seggan.rol.tree.lua.LNode
@@ -24,10 +19,7 @@ import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
-import io.github.seggan.rol.tree.typed.TExternDeclaration
-import io.github.seggan.rol.tree.typed.TFn
 import io.github.seggan.rol.tree.typed.TFunctionCall
-import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TNull
@@ -48,32 +40,9 @@ class Transpiler(
     private val manager: DependencyManager,
 ) : TypedTreeVisitor<LNode>() {
 
-    val functions = mutableMapOf<TFn, String>()
-
     private var indent = 0
 
     override fun start(node: TNode): LNode {
-        object : TypedTreeVisitor<Unit>() {
-            override fun defaultValue(node: TNode) {
-                return
-            }
-
-            override fun visitFunctionDeclaration(declaration: TFunctionDeclaration) {
-                val mangled = StringBuilder(mangle(declaration.name.toString(), declaration.type))
-                for (arg in declaration.args) {
-                    mangled.append(mangle(arg.type))
-                }
-                functions[declaration] = mangled.toString()
-            }
-
-            override fun visitExternDeclaration(declaration: TExternDeclaration) {
-                val mangled = StringBuilder(mangle(declaration.name.toString(), declaration.type))
-                for (arg in declaration.args) {
-                    mangled.append(mangle(arg.type))
-                }
-                functions[declaration] = mangled.toString()
-            }
-        }.start(node)
         return visit(node)
     }
 
@@ -125,37 +94,8 @@ class Transpiler(
         return LLiteral("nil")
     }
 
-    override fun visitFunctionDeclaration(declaration: TFunctionDeclaration): LNode {
-        val name = functions[declaration]!!
-        val args = declaration.args.map { mangle(it.name, it.type) }
-        val body = visit(declaration.body)
-        return LFunctionDefinition(name, args, body.toStatements().withIndent(++indent)).also { indent-- }
-    }
-
-    override fun visitExternDeclaration(declaration: TExternDeclaration): LNode {
-        val args = declaration.args.map(Argument::name)
-        return LExternDefinition(functions[declaration]!!, args, declaration.body)
-    }
-
     override fun visitFunctionCall(call: TFunctionCall): LNode {
-        val available = functions.filterKeys { it.matches(call.field, call.args) }
-        val name: String
-        if (available.size > 1) {
-            Errors.undefinedReference(call.field, call.location)
-        } else if (available.isEmpty()) {
-            var function: FunctionUnit? = null
-            for (pkg in manager.getPackage(call.fname.pkg!!)) {
-                function = pkg.findFunction(call.field, call.args.map(TNode::type))
-                if (function != null) {
-                    break
-                }
-            }
-            name = function!!.mangled
-        } else {
-            name = available.entries.first().value
-        }
-        val args = call.args.map(::visit)
-        return LFunctionCall(name, args)
+        TODO("Redo functions")
     }
 
     override fun visitVariableDeclaration(declaration: TVarDef): LNode {

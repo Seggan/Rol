@@ -7,11 +7,4 @@ interface Reference {
 interface AClass {
     val name: Identifier
     val fields: Map<String, Type>
-    val methods: Map<String, AFunction>
-}
-
-interface AFunction {
-    val name: String
-    val parameters: List<Type>
-    val returnType: Type
 }

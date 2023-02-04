@@ -49,14 +49,6 @@ open class TypedTreeVisitor<R> {
         return defaultValue(tNull)
     }
 
-    open fun visitFunctionDeclaration(declaration: TFunctionDeclaration): R {
-        return defaultValue(declaration)
-    }
-
-    open fun visitExternDeclaration(declaration: TExternDeclaration): R {
-        return defaultValue(declaration)
-    }
-
     open fun visitFunctionCall(call: TFunctionCall): R {
         call.args.forEach(::visit)
         return defaultValue(call)

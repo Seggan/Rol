@@ -3,7 +3,6 @@ package io.github.seggan.rol.resolution
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.meta.ClassUnit
 import io.github.seggan.rol.meta.FileUnit
-import io.github.seggan.rol.meta.FunctionUnit
 import io.github.seggan.rol.meta.InterfaceUnit
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
@@ -113,31 +112,7 @@ class TypeResolver(private val manager: DependencyManager, private val pkg: Stri
     }
 
     fun findFunction(pkg: String?, name: String, args: List<Type>, location: Location): Pair<String?, Type>? {
-        checkPackage(pkg, location)
-        if (pkg == null || pkg == this.pkg) {
-            for (func in localFunctions) {
-                if (func.matches(name, args)) {
-                    return pkg to func.returnType
-                }
-            }
-        }
-        if (pkg == null) {
-            for ((unit, pack) in manager.getExplicitlyImported(name)) {
-                if (unit is FunctionUnit) {
-                    manager.usedDependencies.add(pack)
-                    return pack.pkg to resolveTypeInternal(unit.returnType, location).first
-                }
-            }
-        } else {
-            for (dep in manager.getPackage(pkg)) {
-                val func = dep.findFunction(name, args)
-                if (func != null) {
-                    manager.usedDependencies.add(dep)
-                    return pkg to resolveTypeInternal(func.returnType, location).first
-                }
-            }
-        }
-        return null
+        TODO()
     }
 
     private fun checkPackage(pkg: String?, location: Location) {

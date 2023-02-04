@@ -2,7 +2,6 @@ package io.github.seggan.rol.meta
 
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Klaxon
-import io.github.seggan.rol.tree.common.Type
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -27,7 +26,6 @@ data class FileUnit(
     override val simpleName: String,
     val pkg: String,
     val dependencies: Set<String>,
-    val functions: Set<FunctionUnit>,
     val variables: Set<VariableUnit>,
     val classes: Set<ClassUnit>,
     val interfaces: Set<InterfaceUnit>,
@@ -50,11 +48,10 @@ data class FileUnit(
         private fun parseV1(data: JsonObject): FileUnit {
             val pkg = data.string("package") ?: "unnamed"
             val dependencies = data.array<String>("dependencies")!!.toSet()
-            val functions = data.array<JsonObject>("functions")!!.map { FunctionUnit.parse(1, it) }.toSet()
             val variables = data.array<JsonObject>("variables")!!.map { VariableUnit.parse(1, it) }.toSet()
             val classes = data.array<JsonObject>("classes")!!.map { ClassUnit.parse(1, it) }.toSet()
             val interfaces = data.array<JsonObject>("interfaces")!!.map { InterfaceUnit.parse(1, it) }.toSet()
-            return FileUnit("", pkg, dependencies, functions, variables, classes, interfaces, "")
+            return FileUnit("", pkg, dependencies, variables, classes, interfaces, "")
         }
     }
 
@@ -64,7 +61,6 @@ data class FileUnit(
                 "version" to CompilationUnit.VERSION,
                 "package" to pkg,
                 "dependencies" to dependencies.toList(),
-                "functions" to functions.map(FunctionUnit::serialize),
                 "variables" to variables.map(VariableUnit::serialize),
                 "classes" to classes.map(ClassUnit::serialize),
                 "interfaces" to interfaces.map(InterfaceUnit::serialize)
@@ -73,20 +69,12 @@ data class FileUnit(
         return "-- ROLMETA $obj\npackage.path = \"./?.lua;\" .. package.path\nrequire \"rol_core\"\n$text"
     }
 
-    fun findFunction(name: String, args: List<Type>): FunctionUnit? {
-        return functions.find {
-            it.name == name && it.parameters.size == args.size && it.parameters.zip(args)
-                .all { (a, b) -> a.isAssignableFrom(b) }
-        }
-    }
-
     fun findClass(name: String): CompilationUnit<*>? {
         return classes.find { it.name.name == name } ?: interfaces.find { it.name.name == name }
     }
 
     fun findSubunits(obj: String): List<CompilationUnit<*>> {
         return variables.filter { it.simpleName == obj } +
-                functions.filter { it.name == obj } +
                 classes.filter { it.name.name == obj } +
                 interfaces.filter { it.name.name == obj }
     }
