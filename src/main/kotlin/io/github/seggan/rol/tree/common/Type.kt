@@ -16,7 +16,7 @@ sealed class Type(val name: Identifier, val nullable: Boolean = false) {
             DynType
         )
 
-        fun parse(type: String): Type = Identifier.parseString(type).toType()
+        fun parse(type: String): Type = FunctionType.parse(type) ?: Identifier.parseString(type).toType()
     }
 
     abstract fun nonNullable(): Type
@@ -31,12 +31,12 @@ sealed class Type(val name: Identifier, val nullable: Boolean = false) {
      */
     open fun isAssignableFrom(other: Type): Boolean {
         return when {
-            this === other -> true
+            this == other -> true
             other.nullable -> nullable && nonNullable().isAssignableFrom(other.nonNullable())
             nullable -> nonNullable().isAssignableFrom(other.nonNullable())
             this == DynType || other == DynType -> true
             this == VoidType || other == VoidType -> false
-            else -> this == other
+            else -> false
         }
     }
 
@@ -137,6 +137,38 @@ class UnresolvedType(name: Identifier, nullable: Boolean = false) : Type(name, n
     }
 }
 
+class FunctionType(val args: List<Type>, val returnType: Type) :
+    Type(Identifier(toString())) {
+
+    companion object {
+        private val parseRegex = """\((.*)\)\s*->\s*(.*)\??""".toRegex()
+        private val commaRegex = """\s*,\s*""".toRegex()
+
+        fun parse(s: String): FunctionType? {
+            val type = s.trim()
+            val match = parseRegex.matchEntire(type) ?: return null
+            val args = match.groupValues[1].split(commaRegex).map(Type.Companion::parse)
+            val returnType = Type.parse(match.groupValues[2])
+            return FunctionType(args, returnType)
+        }
+    }
+
+    override fun nonNullable(): FunctionType = this
+    override fun nullable(): FunctionType = this
+
+    override fun isAssignableFrom(other: Type): Boolean {
+        if (other !is FunctionType) return false
+        if (super.isAssignableFrom(other)) return true
+        if (args.size != other.args.size) return false
+        return args.zip(other.args)
+            .all { (a, b) -> a.isAssignableFrom(b) } && returnType.isAssignableFrom(other.returnType)
+    }
+
+    override fun toString(): String {
+        return "(${args.joinToString(", ")}) -> $returnType"
+    }
+}
+
 object DynType : Type(Identifier("dyn")) {
     override fun nonNullable(): Type = this
     override fun nullable(): Type = AnyType
@@ -147,7 +179,7 @@ object AnyType : Type(Identifier("dyn"), true) {
     override fun nullable(): Type = this
 }
 
-object VoidType : Type(Identifier("<nothing>")) {
+object VoidType : Type(Identifier("Void")) {
     override fun nonNullable(): Type = this
     override fun nullable(): Type = this
 }
@@ -155,10 +187,14 @@ object VoidType : Type(Identifier("<nothing>")) {
 fun RolParser.TypeContext.toType(): Type {
     if (DYN() != null) {
         return if (QUESTION() != null) AnyType else DynType
+    } else if (functionType() != null) {
+        val node = functionType()
+        val args = node.args.map { it.toType() }
+        val returnType = node.returnType.toType()
+        return FunctionType(args, returnType)
     }
     return Type.parse(text)
 }
-
 
 
 fun Identifier.toType(): Type {

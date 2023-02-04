@@ -63,6 +63,10 @@ arg
     : unqualifiedIdentifier COLON NL* type
     ;
 
+lambda
+    : LBRACE NL* (arg (NL* COMMA NL* arg)* NL* ARROW NL*)? (statements | expression) NL* RBRACE
+    ;
+
 classDeclaration
     : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* identifier)? NL* LBRACE NL*
     ((fieldDeclaration | constructor | functionDeclaration | externDeclaration) NL*)* RBRACE
@@ -106,6 +110,7 @@ primary
     | Boolean
     | Null
     | identifier
+    | lambda
     ;
 
 call
@@ -164,7 +169,11 @@ throwStatement
     ;
 
 type
-    : (identifier | DYN) QUESTION?
+    : (identifier | DYN | functionType) QUESTION?
+    ;
+
+functionType
+    : LPAREN NL* (args+=type (NL* COMMA NL* args+=type)*)? NL* RPAREN NL* ARROW NL* returnType=type
     ;
 
 // identifier and soft keywords

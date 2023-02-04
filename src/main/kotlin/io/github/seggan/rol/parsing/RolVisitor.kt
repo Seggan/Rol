@@ -24,6 +24,7 @@ import io.github.seggan.rol.tree.untyped.UFieldDef
 import io.github.seggan.rol.tree.untyped.UFunctionCall
 import io.github.seggan.rol.tree.untyped.UFunctionDef
 import io.github.seggan.rol.tree.untyped.UIfStatement
+import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.UNode
 import io.github.seggan.rol.tree.untyped.UNullLiteral
 import io.github.seggan.rol.tree.untyped.UNumberLiteral
@@ -48,7 +49,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return UStatements(visitChildren(ctx).children.flatMap(::flattenStatements))
     }
 
-    override fun visitStatements(ctx: RolParser.StatementsContext): UNode {
+    override fun visitStatements(ctx: RolParser.StatementsContext): UStatements {
         return UStatements(ctx.statement().map(::visit))
     }
 
@@ -182,6 +183,15 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             if (ctx.expression() == null) null else visitExpression(ctx.expression()),
             ctx.location
         )
+    }
+
+    override fun visitLambda(ctx: RolParser.LambdaContext): ULambda {
+        val args = ctx.arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) }
+        return if (ctx.expression() != null) {
+            ULambda(args, UReturn(visitExpression(ctx.expression()), ctx.location).asStatements(), ctx.location)
+        } else {
+            ULambda(args, visitStatements(ctx.statements()), ctx.location)
+        }
     }
 
     override fun visitClassDeclaration(ctx: RolParser.ClassDeclarationContext): UNode {

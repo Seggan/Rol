@@ -1,6 +1,7 @@
 package io.github.seggan.rol.parsing
 
 import io.github.seggan.rol.Errors
+import io.github.seggan.rol.postype.NodeCollector
 import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.resolution.FunctionHeader
 import io.github.seggan.rol.resolution.TypeResolver
@@ -18,6 +19,7 @@ import io.github.seggan.rol.tree.typed.TExternDeclaration
 import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TFunctionDeclaration
 import io.github.seggan.rol.tree.typed.TIfStatement
+import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TLiteral
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TNull
@@ -39,6 +41,7 @@ import io.github.seggan.rol.tree.untyped.UFn
 import io.github.seggan.rol.tree.untyped.UFunctionCall
 import io.github.seggan.rol.tree.untyped.UFunctionDef
 import io.github.seggan.rol.tree.untyped.UIfStatement
+import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.ULiteral
 import io.github.seggan.rol.tree.untyped.UNode
 import io.github.seggan.rol.tree.untyped.UNullLiteral
@@ -132,6 +135,27 @@ class TypeChecker(
         )
     }
 
+    private fun typeLambda(node: ULambda): TLambda {
+        val args = node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) }
+        val body = typeStatements(node.body, args.map {
+            TVarDef(
+                it.name, it.type, Modifiers(
+                    AccessModifier.PRIVATE,
+                    const = true
+                ), it.location
+            )
+        })
+        val returns = object : NodeCollector<TReturn>() {
+            override fun visitReturn(ret: TReturn) = add(ret)
+            override fun visitFunctionDeclaration(declaration: TFunctionDeclaration) {}
+            override fun visitExternDeclaration(declaration: TExternDeclaration) {}
+        }.collect(body)
+        val returnType = returns.map(TNode::type).reduce { a, b ->
+            if (a.isAssignableFrom(b)) b else if (b.isAssignableFrom(a)) a else Errors.typeMismatch(a, b, node.location)
+        }
+        return TLambda(args, body, returnType, node.location)
+    }
+
     private fun typeReturn(node: UReturn): TNode {
         val statement = TReturn(if (node.value == null) null else typeExpression(node.value), node.location)
         if (!currentFrame.returnType.isAssignableFrom(statement.type)) {
@@ -148,6 +172,7 @@ class TypeChecker(
             is ULiteral -> typeLiteral(expr)
             is UFunctionCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
+            is ULambda -> typeLambda(expr)
             else -> throw IllegalArgumentException("Unknown expression type: ${expr.javaClass}")
         }
     }

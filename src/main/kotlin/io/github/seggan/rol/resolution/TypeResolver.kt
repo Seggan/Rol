@@ -6,6 +6,7 @@ import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.meta.FunctionUnit
 import io.github.seggan.rol.meta.InterfaceUnit
 import io.github.seggan.rol.tree.common.ConcreteType
+import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.InterfaceType
 import io.github.seggan.rol.tree.common.Location
@@ -26,15 +27,23 @@ class TypeResolver(private val manager: DependencyManager, private val pkg: Stri
 
     fun resolveType(type: Type, location: Location): Type {
         checkPackage(type.name.pkg, location)
-        val (result, unit) = resolveTypeInternal(type, location)
-        if (unit != null) {
+        val (result, units) = resolveTypeInternal(type, location)
+        for (unit in units) {
             manager.usedDependencies.add(unit)
         }
         return result
     }
 
-    private fun resolveTypeInternal(type: Type, location: Location): Pair<Type, FileUnit?> {
-        return if (type is UnresolvedType) locateType(type, location) else type to null
+    private fun resolveTypeInternal(type: Type, location: Location): Pair<Type, Set<FileUnit>> {
+        return when (type) {
+            is UnresolvedType -> locateType(type, location).let { (r, u) -> r to setOfNotNull(u) }
+            is FunctionType -> {
+                val (returnType, unit) = resolveTypeInternal(type.returnType, location)
+                val (paramTypes, units) = type.args.map { resolveTypeInternal(it, location) }.unzip()
+                FunctionType(paramTypes, returnType) to (unit + units.flatten())
+            }
+            else -> type to setOf()
+        }
     }
 
     private fun locateType(type: UnresolvedType, location: Location): Pair<ResolvedType, FileUnit?> {

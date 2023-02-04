@@ -95,4 +95,9 @@ open class TypedTreeVisitor<R> {
         visit(access.target)
         return defaultValue(access)
     }
+
+    fun visitLambda(lambda: TLambda): R {
+        visit(lambda.body)
+        return defaultValue(lambda)
+    }
 }

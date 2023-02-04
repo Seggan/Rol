@@ -59,6 +59,17 @@ class TExternDeclaration(
     }
 }
 
+class TLambda(
+    val args: List<Argument>,
+    val body: TStatements,
+    returnType: Type,
+    location: Location
+) : TExpression(returnType, listOf(), location) {
+    override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
+        return visitor.visitLambda(this)
+    }
+}
+
 class TReturn(val value: TExpression?, location: Location) :
     TNode(value?.type ?: VoidType, listOfNotNull(value), location) {
     override fun <T> accept(visitor: TypedTreeVisitor<T>): T {

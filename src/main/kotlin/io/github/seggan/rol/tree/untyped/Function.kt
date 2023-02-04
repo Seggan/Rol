@@ -13,8 +13,7 @@ sealed class UFn(
     val type: Type,
     children: List<UNode> = emptyList(),
     location: Location
-) :
-    UNode(children, location)
+) : UNode(children, location)
 
 class UFunctionDef(
     name: Identifier,
@@ -23,8 +22,7 @@ class UFunctionDef(
     val body: UStatements,
     type: Type,
     location: Location
-) :
-    UFn(name, args, modifiers, type, listOf(body), location) {
+) : UFn(name, args, modifiers, type, listOf(body), location) {
     override fun toString(): String {
         return "FunctionDeclaration($name, $args, $body)"
     }
@@ -41,10 +39,19 @@ class UExternDeclaration(
     val body: String,
     type: Type,
     location: Location
-) :
-    UFn(name, args, modifiers, type, listOf(), location) {
+) : UFn(name, args, modifiers, type, listOf(), location) {
     override fun toString(): String {
         return "ExternDeclaration($name, $args, $body)"
+    }
+}
+
+class ULambda(
+    val args: List<Argument>,
+    val body: UStatements,
+    location: Location
+) : UExpression(listOf(body), location) {
+    override fun toString(): String {
+        return "Lambda($args, $body)"
     }
 }
 
