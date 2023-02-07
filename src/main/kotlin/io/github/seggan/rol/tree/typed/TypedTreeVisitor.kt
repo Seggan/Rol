@@ -92,4 +92,8 @@ open class TypedTreeVisitor<R> {
         visit(lambda.body)
         return defaultValue(lambda)
     }
+
+    open fun visitExtern(extern: TExtern): R {
+        return defaultValue(extern)
+    }
 }

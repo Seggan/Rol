@@ -15,7 +15,7 @@ WS
 NL: '\r'? '\n';
 
 FUN: 'fun';
-EXTERN: 'extern';
+EXTERN: 'extern' -> pushMode(EXTERN_MODE);
 
 VAR: 'var';
 CONST: 'const';
@@ -128,8 +128,34 @@ Null
     : 'null'
     ;
 
-Identifier
+fragment Id
     : [a-zA-Z_][a-zA-Z0-9_]*
     ;
 
+Identifier: Id;
+
 ANY: .;
+
+mode EXTERN_MODE;
+
+EXTERN_ID
+    : Id
+    ;
+
+EXTERN_WS
+    : [\u0020\u0009\u000C\n] -> channel(HIDDEN)
+    ;
+
+EXTERN_COMMA: ',';
+
+EXTERN_LPAREN: '(';
+
+EXTERN_RPAREN: ')';
+
+EXTERN_LBRACE: '{' -> pushMode(EXTERN_CODE_MODE);
+
+mode EXTERN_CODE_MODE;
+
+EXTERN_RBRACE: '}' -> popMode, popMode;
+
+EXTERN_CODE: .+?;

@@ -90,3 +90,9 @@ enum class UPostfixOperator(private val symbol: String, val typedOperator: TPost
         fun fromSymbol(symbol: String): UPostfixOperator = values().first { it.symbol == symbol }
     }
 }
+
+class UExtern(val vars: List<String>, val code: String, location: Location) : UExpression(emptyList(), location) {
+    override fun toString(): String {
+        return "Extern($vars, $code)"
+    }
+}

@@ -35,7 +35,6 @@ declaration
     : varDeclaration
     | classDeclaration
     | functionDeclaration
-    | externDeclaration
     ;
 
 varDeclaration
@@ -69,7 +68,7 @@ lambda
 
 classDeclaration
     : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* identifier)? NL* LBRACE NL*
-    ((fieldDeclaration | constructor | functionDeclaration | externDeclaration) NL*)* RBRACE
+    ((fieldDeclaration | constructor | functionDeclaration) NL*)* RBRACE
     ;
 
 fieldDeclaration
@@ -78,10 +77,6 @@ fieldDeclaration
 
 constructor
     : accessModifier? NL* INIT NL* argList NL* block
-    ;
-
-externDeclaration
-    : accessModifier? NL* EXTERN NL* FUN NL* identifier NL* argList NL* (COLON NL* type)? NL* ASSIGN NL* string
     ;
 
 expression
@@ -111,10 +106,16 @@ primary
     | Null
     | identifier
     | lambda
+    | extern
     ;
 
 number
     : Number | HexNumber | BinNumber | OctNumber
+    ;
+
+extern
+    : EXTERN NL* (EXTERN_LPAREN (EXTERN_ID (EXTERN_COMMA EXTERN_ID)*)? EXTERN_RPAREN)?
+        EXTERN_LBRACE EXTERN_CODE* EXTERN_RBRACE
     ;
 
 control
@@ -180,7 +181,6 @@ identifier
 unqualifiedIdentifier
     : Identifier
     | CONST
-    | EXTERN
     | INIT
     ;
 

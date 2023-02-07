@@ -1,6 +1,5 @@
 package io.github.seggan.rol.postype
 
-import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Type
@@ -24,6 +23,7 @@ import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TCall
 import io.github.seggan.rol.tree.typed.TExpression
+import io.github.seggan.rol.tree.typed.TExtern
 import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TNode
@@ -39,16 +39,18 @@ import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
 import io.github.seggan.rol.tree.typed.TypedTreeVisitor
-import java.time.LocalTime
 import java.util.EnumSet
 
 class Transpiler(
     private val resolver: TypeResolver,
 ) : TypedTreeVisitor<LNode>() {
 
-    private var indent = 0
+    private lateinit var dontMangle: Set<String>
 
     override fun start(node: TNode): LNode {
+        dontMangle = object : NodeCollector<TExtern>() {
+            override fun visitExtern(extern: TExtern) = add(extern)
+        }.collect(node).flatMapTo(mutableSetOf()) { it.vars }
         return visit(node)
     }
 
@@ -133,8 +135,8 @@ class Transpiler(
     override fun visitLambda(lambda: TLambda): LNode {
         return LFunction(
             lambda.args.map { mangle(Identifier(it.name), it.type) },
-            visit(lambda.body).toStatements().withIndent(++indent)
-        ).also { indent-- }
+            visit(lambda.body).toStatements()
+        )
     }
 
     override fun visitAccess(access: TAccess): LNode {
@@ -144,13 +146,24 @@ class Transpiler(
     override fun visitIfStatement(statement: TIfStatement): LNode {
         return LIfStatement(
             visit(statement.condition) as LExpression,
-            visit(statement.ifBody).toStatements().withIndent(++indent),
-            if (statement.elseBody == null) null else visit(statement.elseBody).toStatements().withIndent(indent)
-        ).also { indent-- }
+            visit(statement.ifBody).toStatements(),
+            if (statement.elseBody == null) null else visit(statement.elseBody).toStatements()
+        )
+    }
+
+    override fun visitExtern(extern: TExtern): LNode {
+        return LLiteral(extern.code)
     }
 
     private fun visitExpression(expression: TExpression): LExpression {
         return visit(expression) as LExpression
+    }
+
+    private fun mangle(name: Identifier, type: Type): String {
+        if ((name.pkg == resolver.pkg || name.pkg == null) && name.name in dontMangle && name !in resolver.mangledVariables) {
+            return name.name
+        }
+        return regex.replace(name.toString(), "_") + mangle(type)
     }
 }
 
@@ -166,10 +179,6 @@ private val regex = "\\W".toRegex()
 
 private fun mangle(type: Type): String {
     return regex.replace(type.hashCode().toString(16).take(6), "_")
-}
-
-private fun mangle(name: Identifier, type: Type): String {
-    return regex.replace(name.toString(), "_") + mangle(type)
 }
 
 private fun LNode.toStatements(): LStatements {

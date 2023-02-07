@@ -13,8 +13,9 @@ import io.github.seggan.rol.tree.common.VoidType
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
-import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TCall
+import io.github.seggan.rol.tree.typed.TExpression
+import io.github.seggan.rol.tree.typed.TExtern
 import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TLiteral
@@ -32,8 +33,9 @@ import io.github.seggan.rol.tree.typed.TVariableAccess
 import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
-import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UCall
+import io.github.seggan.rol.tree.untyped.UExpression
+import io.github.seggan.rol.tree.untyped.UExtern
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.ULiteral
@@ -122,6 +124,7 @@ class TypeChecker(
             is UCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
             is ULambda -> typeLambda(expr)
+            is UExtern -> TExtern(expr.vars, expr.code, expr.location)
             else -> throw IllegalArgumentException("Unknown expression type: ${expr.javaClass}")
         }
     }

@@ -5,18 +5,15 @@ sealed class LNode {
     abstract fun transpile(): String
 }
 
-class LStatements(private val statements: List<LNode>, private val indent: Int = 0) : LNode() {
+class LStatements(private val statements: List<LNode>) : LNode() {
     companion object {
         private val NEWLINE = "\n".toRegex()
     }
 
     override fun transpile(): String {
-        return statements.filter { it !is LNop }.flatMap { NEWLINE.split(it.transpile()) }.joinToString("\n") {
-            "\t".repeat(indent) + it
-        }
+        return statements.filter { it !is LNop }.flatMap { NEWLINE.split(it.transpile()) }.filterNot(String::isBlank)
+            .joinToString("\n")
     }
-
-    fun withIndent(indent: Int) = LStatements(statements, indent)
 }
 
 class LString(private val string: String) : LExpression() {
@@ -66,7 +63,7 @@ class LUnaryExpression(private val operator: String, private val value: LNode) :
 
 class LFunction(val args: List<String>, val body: LStatements) : LExpression() {
     override fun transpile(): String {
-        return "function (${args.joinToString(", ")})\n${body.withIndent(1).transpile()}\nend"
+        return "function (${args.joinToString(", ")})\n${body.transpile()}\nend"
     }
 }
 

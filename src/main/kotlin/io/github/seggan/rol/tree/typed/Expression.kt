@@ -81,3 +81,10 @@ enum class TPostfixOperator(val typer: (Type) -> Type?, val expect: Type) {
     DEC({ if (it == ConcreteType.NUMBER) ConcreteType.NUMBER else null }, ConcreteType.NUMBER),
     ASSERT_NON_NULL({ it.nonNullable() }, AnyType);
 }
+
+class TExtern(val vars: List<String>, val code: String, location: Location) :
+    TExpression(AnyType, emptyList(), location) {
+    override fun <T> accept(visitor: TypedTreeVisitor<T>): T {
+        return visitor.visitExtern(this)
+    }
+}

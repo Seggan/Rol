@@ -15,7 +15,7 @@ import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.UnresolvedType
 import io.github.seggan.rol.tree.common.toType
 
-class TypeResolver(private val manager: DependencyManager, private val pkg: String, private val imports: Set<String>) {
+class TypeResolver(private val manager: DependencyManager, val pkg: String, private val imports: Set<String>) {
 
     private val resolvedTypes = mutableMapOf<Identifier, ResolvedType>()
 

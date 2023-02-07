@@ -20,6 +20,7 @@ import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UCall
 import io.github.seggan.rol.tree.untyped.UClassDef
 import io.github.seggan.rol.tree.untyped.UExpression
+import io.github.seggan.rol.tree.untyped.UExtern
 import io.github.seggan.rol.tree.untyped.UFieldDef
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULambda
@@ -101,6 +102,14 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.identifier() != null -> UVariableAccess(ctx.identifier().toIdentifier(), ctx.location)
             else -> visitChildren(ctx) as UExpression
         }
+    }
+
+    override fun visitExtern(ctx: RolParser.ExternContext): UNode {
+        return UExtern(
+            ctx.EXTERN_ID().map { it.text },
+            ctx.EXTERN_CODE().joinToString("") { it.text },
+            ctx.location
+        )
     }
 
     override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): UNode {
