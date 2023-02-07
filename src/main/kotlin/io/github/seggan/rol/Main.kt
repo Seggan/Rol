@@ -3,14 +3,18 @@ package io.github.seggan.rol
 import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.meta.FileUnit
+import io.github.seggan.rol.meta.VariableUnit
 import io.github.seggan.rol.parsing.ImportCollector
 import io.github.seggan.rol.parsing.RolVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
+import io.github.seggan.rol.postype.mangleIdentifier
 import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.resolution.TypeResolver
+import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.typed.TNode
+import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.untyped.UStatements
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
@@ -119,9 +123,10 @@ fun compile(path: Path, files: List<Path>): FileUnit {
     val collector = ImportCollector()
     parsed.accept(collector)
 
-    DEPENDENCY_MANAGER = DependencyManager(files, collector.explicitImports + ("rol" to setOf()))
+    val explicitImports = collector.explicitImports + ("rol" to setOf())
+    DEPENDENCY_MANAGER = DependencyManager(files, explicitImports)
 
-    val resolver = TypeResolver(DEPENDENCY_MANAGER, pkg, collector.imports)
+    val resolver = TypeResolver(DEPENDENCY_MANAGER, pkg, collector.imports + explicitImports.keys)
     var typedAst: TNode = TypeChecker(resolver, pkg).typeAst(ast)
     var folder: ConstantFolder
     do {
@@ -135,7 +140,16 @@ fun compile(path: Path, files: List<Path>): FileUnit {
         path.nameWithoutExtension,
         pkg,
         collector.imports + collector.explicitImports.keys,
-        setOf(),
+        typedAst.children
+            .filterIsInstance<TVarDef>()
+            .filter { it.modifiers.access == AccessModifier.PUBLIC }
+            .mapTo(mutableSetOf()) {
+                VariableUnit(
+                    it.name.name,
+                    mangleIdentifier(it.name, it.type),
+                    it.type
+                )
+            },
         setOf(),
         setOf(),
         transpiledAst.transpile()

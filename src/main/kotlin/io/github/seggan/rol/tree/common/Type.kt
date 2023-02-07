@@ -6,16 +6,6 @@ sealed class Type(val name: Identifier, val nullable: Boolean = false) {
 
     companion object {
 
-        val COMPILER_DEFINED = setOf(
-            ConcreteType.BOOLEAN,
-            ConcreteType.OBJECT,
-            ConcreteType.STRING,
-            ConcreteType.NUMBER,
-            VoidType,
-            AnyType,
-            DynType
-        )
-
         fun parse(type: String): Type = FunctionType.parse(type) ?: Identifier.parseString(type).toType()
     }
 
@@ -147,7 +137,8 @@ class FunctionType(val args: List<Type>, val returnType: Type) :
         fun parse(s: String): FunctionType? {
             val type = s.trim()
             val match = parseRegex.matchEntire(type) ?: return null
-            val args = match.groupValues[1].split(commaRegex).map(Type.Companion::parse)
+            val argStr = match.groupValues[1]
+            val args = if (argStr.isEmpty()) listOf() else argStr.split(commaRegex).map { Type.parse(it) }
             val returnType = Type.parse(match.groupValues[2])
             return FunctionType(args, returnType)
         }

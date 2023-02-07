@@ -151,13 +151,6 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
 
     fun addVariable(name: Identifier, type: Type, location: Location): Type {
         checkPackage(name.pkg, location)
-        if (name in variables) {
-            Errors.genericError(
-                "Resolution",
-                "Variable $name already defined",
-                location
-            )
-        }
         variables[name] = type
         return type
     }

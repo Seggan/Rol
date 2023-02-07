@@ -1,6 +1,7 @@
 package io.github.seggan.rol.postype
 
 import io.github.seggan.rol.resolution.TypeResolver
+import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
@@ -114,6 +115,9 @@ class Transpiler(
     }
 
     override fun visitVariableDeclaration(declaration: TVarDef): LNode {
+        if (declaration.modifiers.access == AccessModifier.PUBLIC) {
+            return LNop
+        }
         return LVariableDeclaration(mangle(declaration.name, declaration.type))
     }
 
@@ -163,7 +167,7 @@ class Transpiler(
         if ((name.pkg == resolver.pkg || name.pkg == null) && name.name in dontMangle && name !in resolver.mangledVariables) {
             return name.name
         }
-        return regex.replace(name.toString(), "_") + mangle(type)
+        return mangleIdentifier(name, type)
     }
 }
 
@@ -179,6 +183,10 @@ private val regex = "\\W".toRegex()
 
 private fun mangle(type: Type): String {
     return regex.replace(type.hashCode().toString(16).take(6), "_")
+}
+
+fun mangleIdentifier(name: Identifier, type: Type): String {
+    return regex.replace(name.toString(), "_") + mangle(type)
 }
 
 private fun LNode.toStatements(): LStatements {
