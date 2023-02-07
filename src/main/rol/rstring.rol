@@ -1,5 +1,5 @@
 package rol
 
-extern fun subs(s: String, starti: Number, endi: Number): String = """
-    return string.sub(s, starti + 1, endi)
-"""
+fun subs(s: String, starti: Number, endi: Number): String {
+    return extern (s, starti, endi) { string.sub(s, starti + 1, endi) }!
+}

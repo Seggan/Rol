@@ -1,11 +1,15 @@
 package rol
 
-extern fun toString(x: dyn?): String = """
-    if x == nil then
-        return "null"
-    else
-        return tostring(x)
-    end
-"""
+fun toString(x: dyn?): String {
+    extern (x) {
+        if x == nil then
+            return "null"
+        else
+            return tostring(x)
+        end
+    }
+}
 
-extern fun toNumber(x: String): Number = "return tonumber(x)"
+fun toNumber(x: String): Number {
+    return extern (x) { tonumber(x) }!
+}

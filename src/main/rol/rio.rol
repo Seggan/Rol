@@ -1,17 +1,19 @@
 package rol
 
-extern fun print(s: dyn?) = """
-    if s == nil then
-        print("null")
-    else
-        print(s)
-    end
-"""
+fun print(x: dyn?) {
+    extern (x) {
+        if x == nil then
+            print("null")
+        else
+            print(x)
+        end
+    }
+}
 
-extern fun readLine(): String = """
-    return io.read("*l")
-"""
+fun readLine(): String {
+    return extern { io.read("*l") }!
+}
 
-extern fun readNumber(): Number = """
-    return io.read("*n")
-"""
+fun readNumber(): Number {
+    return extern { io.read("*n") }!
+}
