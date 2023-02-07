@@ -1,10 +1,13 @@
 package io.github.seggan.rol.postype
 
 import io.github.seggan.rol.resolution.DependencyManager
+import io.github.seggan.rol.resolution.TypeResolver
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.lua.LAssignment
 import io.github.seggan.rol.tree.lua.LBinaryExpression
 import io.github.seggan.rol.tree.lua.LExpression
+import io.github.seggan.rol.tree.lua.LFunction
 import io.github.seggan.rol.tree.lua.LFunctionCall
 import io.github.seggan.rol.tree.lua.LIfStatement
 import io.github.seggan.rol.tree.lua.LLiteral
@@ -19,8 +22,10 @@ import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
-import io.github.seggan.rol.tree.typed.TFunctionCall
+import io.github.seggan.rol.tree.typed.TCall
+import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TIfStatement
+import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TNull
 import io.github.seggan.rol.tree.typed.TNumber
@@ -34,10 +39,11 @@ import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
 import io.github.seggan.rol.tree.typed.TypedTreeVisitor
+import java.time.LocalTime
 import java.util.EnumSet
 
 class Transpiler(
-    private val manager: DependencyManager,
+    private val resolver: TypeResolver,
 ) : TypedTreeVisitor<LNode>() {
 
     private var indent = 0
@@ -61,7 +67,11 @@ class Transpiler(
     override fun visitBinaryExpression(expression: TBinaryExpression): LNode {
         val op = expression.operator
         return if (op in bitwiseOps) {
-            LFunctionCall(op.op, visit(expression.left), visit(expression.right))
+            LFunctionCall(
+                LLiteral(op.op),
+                visit(expression.left) as LExpression,
+                visit(expression.right) as LExpression
+            )
         } else {
             LBinaryExpression(visit(expression.left), op.op, visit(expression.right))
         }
@@ -70,9 +80,9 @@ class Transpiler(
     override fun visitPostfixExpression(expression: TPostfixExpression): LNode {
         if (expression.operator == TPostfixOperator.ASSERT_NON_NULL) {
             return LFunctionCall(
-                "assertNonNull", visit(expression.left), LString(
-                    expression.location.toString().replace("\"", "\\\"")
-                )
+                LLiteral("assertNonNull"),
+                visitExpression(expression.left),
+                LString(expression.location.toString().replace("\"", "\\\""))
             )
         }
         return super.visitPostfixExpression(expression)
@@ -94,8 +104,11 @@ class Transpiler(
         return LLiteral("nil")
     }
 
-    override fun visitFunctionCall(call: TFunctionCall): LNode {
-        TODO("Redo functions")
+    override fun visitFunctionCall(call: TCall): LNode {
+        return LFunctionCall(
+            visitExpression(call.expr),
+            call.args.map(::visitExpression)
+        )
     }
 
     override fun visitVariableDeclaration(declaration: TVarDef): LNode {
@@ -103,19 +116,29 @@ class Transpiler(
     }
 
     override fun visitVariableAccess(access: TVariableAccess): LNode {
-        return LLiteral(mangle(access.field, access.type))
+        return LLiteral(resolver.mangledVariables[access.field] ?: mangle(access.field, access.type))
     }
 
     override fun visitVariableAssignment(assignment: TVarAssign): LNode {
-        return LAssignment(mangle(assignment.name, assignment.type), visit(assignment.value))
+        return LAssignment(
+            resolver.mangledVariables[assignment.name] ?: mangle(assignment.name, assignment.type),
+            visit(assignment.value)
+        )
     }
 
     override fun visitReturn(ret: TReturn): LNode {
         return LReturn(if (ret.value == null) null else visit(ret.value))
     }
 
+    override fun visitLambda(lambda: TLambda): LNode {
+        return LFunction(
+            lambda.args.map { mangle(Identifier(it.name), it.type) },
+            visit(lambda.body).toStatements().withIndent(++indent)
+        ).also { indent-- }
+    }
+
     override fun visitAccess(access: TAccess): LNode {
-        return LBinaryExpression(visit(access.target), ".", LLiteral(access.field))
+        return LBinaryExpression(visit(access.target), ".", LLiteral(access.field.name))
     }
 
     override fun visitIfStatement(statement: TIfStatement): LNode {
@@ -124,6 +147,10 @@ class Transpiler(
             visit(statement.ifBody).toStatements().withIndent(++indent),
             if (statement.elseBody == null) null else visit(statement.elseBody).toStatements().withIndent(indent)
         ).also { indent-- }
+    }
+
+    private fun visitExpression(expression: TExpression): LExpression {
+        return visit(expression) as LExpression
     }
 }
 
@@ -141,8 +168,8 @@ private fun mangle(type: Type): String {
     return regex.replace(type.hashCode().toString(16).take(6), "_")
 }
 
-private fun mangle(name: String, type: Type): String {
-    return regex.replace(name, "_") + mangle(type)
+private fun mangle(name: Identifier, type: Type): String {
+    return regex.replace(name.toString(), "_") + mangle(type)
 }
 
 private fun LNode.toStatements(): LStatements {

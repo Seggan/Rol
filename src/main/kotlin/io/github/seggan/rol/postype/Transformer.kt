@@ -2,9 +2,10 @@ package io.github.seggan.rol.postype
 
 import io.github.seggan.rol.tree.typed.TAccess
 import io.github.seggan.rol.tree.typed.TBinaryExpression
+import io.github.seggan.rol.tree.typed.TCall
 import io.github.seggan.rol.tree.typed.TExpression
-import io.github.seggan.rol.tree.typed.TFunctionCall
 import io.github.seggan.rol.tree.typed.TIfStatement
+import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TPostfixExpression
 import io.github.seggan.rol.tree.typed.TPrefixExpression
@@ -49,11 +50,11 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
         )
     }
 
-    override fun visitFunctionCall(call: TFunctionCall): TNode {
-        return TFunctionCall(
-            call.fname,
+    override fun visitFunctionCall(call: TCall): TNode {
+        return TCall(
+            call.expr,
             call.args.map(::visit).filterIsInstance<TExpression>(),
-            call.type,
+            call.ftype,
             call.location
         )
     }
@@ -83,9 +84,18 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
     override fun visitAccess(access: TAccess): TNode {
         return TAccess(
             visit(access.target) as TExpression,
-            access.field,
+            access.field.name,
             access.type,
             access.location
+        )
+    }
+
+    override fun visitLambda(lambda: TLambda): TNode {
+        return TLambda(
+            lambda.args,
+            visit(lambda.body) as TStatements,
+            lambda.type,
+            lambda.location
         )
     }
 }

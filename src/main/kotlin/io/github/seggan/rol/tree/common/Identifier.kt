@@ -8,10 +8,6 @@ data class Identifier(val name: String, val pkg: String? = null) {
 
         private const val SEPARATOR = ':'
 
-        fun fromNode(node: RolParser.IdentifierContext): Identifier {
-            return Identifier(node.unqualifiedIdentifier().text, node.package_()?.text)
-        }
-
         fun parseString(string: String): Identifier {
             val split = string.split(SEPARATOR)
             return Identifier(split.last(), if (split.size == 2) split.first() else null)
@@ -24,5 +20,5 @@ data class Identifier(val name: String, val pkg: String? = null) {
 }
 
 fun RolParser.IdentifierContext.toIdentifier(): Identifier {
-    return Identifier.fromNode(this)
+    return Identifier(this.unqualifiedIdentifier().text, this.package_()?.text)
 }

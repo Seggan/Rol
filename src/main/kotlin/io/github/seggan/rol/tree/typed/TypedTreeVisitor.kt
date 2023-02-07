@@ -49,7 +49,7 @@ open class TypedTreeVisitor<R> {
         return defaultValue(tNull)
     }
 
-    open fun visitFunctionCall(call: TFunctionCall): R {
+    open fun visitFunctionCall(call: TCall): R {
         call.args.forEach(::visit)
         return defaultValue(call)
     }
@@ -88,7 +88,7 @@ open class TypedTreeVisitor<R> {
         return defaultValue(access)
     }
 
-    fun visitLambda(lambda: TLambda): R {
+    open fun visitLambda(lambda: TLambda): R {
         visit(lambda.body)
         return defaultValue(lambda)
     }

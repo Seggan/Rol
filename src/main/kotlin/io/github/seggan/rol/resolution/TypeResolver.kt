@@ -4,6 +4,7 @@ import io.github.seggan.rol.Errors
 import io.github.seggan.rol.meta.ClassUnit
 import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.meta.InterfaceUnit
+import io.github.seggan.rol.meta.VariableUnit
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
@@ -18,11 +19,9 @@ class TypeResolver(private val manager: DependencyManager, private val pkg: Stri
 
     private val resolvedTypes = mutableMapOf<Identifier, ResolvedType>()
 
-    private val localFunctions = mutableSetOf<FunctionHeader>()
+    private val variables = mutableMapOf<Identifier, Type>()
 
-    fun registerFunctionHeader(header: FunctionHeader) {
-        localFunctions.add(header)
-    }
+    val mangledVariables = mutableMapOf<Identifier, String>()
 
     fun resolveType(type: Type, location: Location): Type {
         checkPackage(type.name.pkg, location)
@@ -111,8 +110,56 @@ class TypeResolver(private val manager: DependencyManager, private val pkg: Stri
         ).also { resolvedTypes[clazz.name] = it }
     }
 
-    fun findFunction(pkg: String?, name: String, args: List<Type>, location: Location): Pair<String?, Type>? {
-        TODO()
+    fun resolveVariable(name: Identifier, location: Location): Pair<Identifier, Type> {
+        checkPackage(name.pkg, location)
+        if (name in variables) {
+            return name to variables[name]!!
+        }
+        if (name.pkg == null) {
+            val possibleLocal = name.copy(pkg = pkg)
+            if (possibleLocal in variables) {
+                return possibleLocal to variables[possibleLocal]!!
+            }
+            for ((unit, pkg) in manager.getExplicitlyImported(name.name)) {
+                if (unit is VariableUnit) {
+                    manager.usedDependencies.add(pkg)
+                    val fname = name.copy(pkg = pkg.pkg)
+                    mangledVariables[fname] = unit.mangled
+                    return fname to addVariable(
+                        fname,
+                        resolveTypeInternal(unit.type, location).first,
+                        location
+                    )
+                }
+            }
+        } else {
+            for (unit in manager.getPackage(name.pkg)) {
+                val variable = unit.findVariable(name.name)
+                if (variable != null) {
+                    manager.usedDependencies.add(unit)
+                    mangledVariables[name] = variable.mangled
+                    return name to addVariable(
+                        name,
+                        resolveTypeInternal(variable.type, location).first,
+                        location
+                    )
+                }
+            }
+        }
+        Errors.undefinedReference(name.toString(), location)
+    }
+
+    fun addVariable(name: Identifier, type: Type, location: Location): Type {
+        checkPackage(name.pkg, location)
+        if (name in variables) {
+            Errors.genericError(
+                "Resolution",
+                "Variable $name already defined",
+                location
+            )
+        }
+        variables[name] = type
+        return type
     }
 
     private fun checkPackage(pkg: String?, location: Location) {

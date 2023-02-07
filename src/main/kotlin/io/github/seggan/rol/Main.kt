@@ -9,6 +9,7 @@ import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
 import io.github.seggan.rol.resolution.DependencyManager
+import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.untyped.UStatements
 import kotlinx.cli.ArgParser
@@ -113,20 +114,22 @@ fun compile(path: Path, files: List<Path>): FileUnit {
     val pkg = parsed.packageStatement()?.package_()?.text ?: "unnamed"
 
     val ast = parsed.accept(RolVisitor()) as UStatements
+    println(ast)
 
     val collector = ImportCollector()
     parsed.accept(collector)
 
     DEPENDENCY_MANAGER = DependencyManager(files, collector.explicitImports + ("rol" to setOf()))
 
-    var typedAst: TNode = TypeChecker(DEPENDENCY_MANAGER, collector.imports, pkg).typeAst(ast)
+    val resolver = TypeResolver(DEPENDENCY_MANAGER, pkg, collector.imports)
+    var typedAst: TNode = TypeChecker(resolver, pkg).typeAst(ast)
     var folder: ConstantFolder
     do {
         folder = ConstantFolder()
         typedAst = folder.start(typedAst)
     } while (folder.changed)
 
-    val transpiler = Transpiler(DEPENDENCY_MANAGER)
+    val transpiler = Transpiler(resolver)
     val transpiledAst = transpiler.start(typedAst)
     return FileUnit(
         path.nameWithoutExtension,

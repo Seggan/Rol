@@ -1,21 +1,21 @@
 package io.github.seggan.rol.tree.untyped
 
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
-import io.github.seggan.rol.tree.common.Reference
 import io.github.seggan.rol.tree.common.Type
 
-sealed class UVar(val name: String, children: List<UNode>, location: Location) : UNode(children, location)
+sealed class UVar(val name: Identifier, children: List<UNode>, location: Location) : UNode(children, location)
 
-class UVarDef(name: String, val modifiers: Modifiers, val type: Type?, location: Location) :
+class UVarDef(name: Identifier, val modifiers: Modifiers, val type: Type?, location: Location) :
     UVar(name, listOf(), location) {
     override fun toString(): String {
         return "VarDef($modifiers, $name, type=$type)"
     }
 }
 
-class UVarAssign(name: String, val value: UExpression, location: Location) :
-    UVar(name, listOf(value), location), Reference {
+class UVarAssign(name: Identifier, val value: UExpression, location: Location) :
+    UVar(name, listOf(value), location) {
     override fun toString(): String {
         return "VarAssign($name, $value)"
     }

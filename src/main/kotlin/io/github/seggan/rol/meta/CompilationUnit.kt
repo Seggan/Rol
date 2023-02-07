@@ -73,6 +73,10 @@ data class FileUnit(
         return classes.find { it.name.name == name } ?: interfaces.find { it.name.name == name }
     }
 
+    fun findVariable(name: String): VariableUnit? {
+        return variables.find { it.simpleName == name }
+    }
+
     fun findSubunits(obj: String): List<CompilationUnit<*>> {
         return variables.filter { it.simpleName == obj } +
                 classes.filter { it.name.name == obj } +

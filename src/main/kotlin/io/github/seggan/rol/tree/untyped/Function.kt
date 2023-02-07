@@ -2,10 +2,12 @@ package io.github.seggan.rol.tree.untyped
 
 import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Type
 
 class ULambda(
     val args: List<Argument>,
     val body: UStatements,
+    val returnType: Type?,
     location: Location
 ) : UExpression(listOf(body), location) {
     override fun toString(): String {

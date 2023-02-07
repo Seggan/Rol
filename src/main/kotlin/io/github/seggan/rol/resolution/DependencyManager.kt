@@ -18,7 +18,7 @@ class DependencyManager(files: List<Path>, explicit: Map<String, Set<String>>) {
             val pkgUnits = getPackage(pkg)
             if (objs.isEmpty()) {
                 // import all
-                putAll(pkgUnits.associateWith { it.variables + it.functions + it.classes + it.interfaces })
+                putAll(pkgUnits.associateWith { it.variables + it.classes + it.interfaces })
             } else {
                 // import specific
                 for (obj in objs) {

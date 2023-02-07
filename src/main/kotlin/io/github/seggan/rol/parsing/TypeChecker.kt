@@ -2,10 +2,10 @@ package io.github.seggan.rol.parsing
 
 import io.github.seggan.rol.Errors
 import io.github.seggan.rol.postype.NodeCollector
-import io.github.seggan.rol.resolution.DependencyManager
 import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.ConcreteType
+import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
@@ -14,7 +14,7 @@ import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TExpression
-import io.github.seggan.rol.tree.typed.TFunctionCall
+import io.github.seggan.rol.tree.typed.TCall
 import io.github.seggan.rol.tree.typed.TIfStatement
 import io.github.seggan.rol.tree.typed.TLambda
 import io.github.seggan.rol.tree.typed.TLiteral
@@ -33,7 +33,7 @@ import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UExpression
-import io.github.seggan.rol.tree.untyped.UFunctionCall
+import io.github.seggan.rol.tree.untyped.UCall
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.ULiteral
@@ -50,14 +50,12 @@ import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
 
 class TypeChecker(
-    dependencyManager: DependencyManager,
-    imports: Set<String>,
+    private val resolver: TypeResolver,
     private val pkg: String
 ) {
 
     private val stack = ArrayDeque<StackFrame>()
     private val currentFrame get() = stack.first()
-    private val resolver = TypeResolver(dependencyManager, pkg, imports)
 
     fun typeAst(ast: UStatements): TStatements {
         return typeStatements(ast)
@@ -89,16 +87,19 @@ class TypeChecker(
         val args = node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) }
         val body = typeStatements(node.body, args.map {
             TVarDef(
-                it.name, it.type, Modifiers(
+                Identifier(it.name),
+                it.type,
+                Modifiers(
                     AccessModifier.PRIVATE,
                     const = true
-                ), it.location
+                ),
+                it.location
             )
         })
         val returns = object : NodeCollector<TReturn>() {
             override fun visitReturn(ret: TReturn) = add(ret)
         }.collect(body)
-        val returnType = returns.map(TNode::type).reduce { a, b ->
+        val returnType = node.returnType ?: returns.map(TNode::type).reduce { a, b ->
             if (a.isAssignableFrom(b)) b else if (b.isAssignableFrom(a)) a else Errors.typeMismatch(a, b, node.location)
         }
         return TLambda(args, body, returnType, node.location)
@@ -118,7 +119,7 @@ class TypeChecker(
             is UPrefixExpression -> typePrefixExpression(expr)
             is UPostfixExpression -> typePostfixExpression(expr)
             is ULiteral -> typeLiteral(expr)
-            is UFunctionCall -> typeFunctionCall(expr)
+            is UCall -> typeFunctionCall(expr)
             is UVariableAccess -> typeVariableAccess(expr)
             is ULambda -> typeLambda(expr)
             else -> throw IllegalArgumentException("Unknown expression type: ${expr.javaClass}")
@@ -126,9 +127,12 @@ class TypeChecker(
     }
 
     private fun typeVariableAccess(expr: UVariableAccess): TVariableAccess {
-        val varDef = currentFrame.vars.find { it.name == expr.name }
-            ?: Errors.undefinedReference(expr.name, expr.location)
-        return TVariableAccess(varDef.name, varDef.type, expr.location)
+        val found = currentFrame.vars.find { it.name == expr.name }
+        val (def, type) = if (found != null) found.name to found.type else resolver.resolveVariable(
+            expr.name,
+            expr.location
+        )
+        return TVariableAccess(def, type, expr.location)
     }
 
     private fun typeLiteral(literal: ULiteral): TLiteral<*> {
@@ -141,8 +145,8 @@ class TypeChecker(
     }
 
     private fun typeBinaryExpression(expr: UBinaryExpression): TBinaryExpression {
-        val left = checkVoid(typeExpression(expr.left))
-        val right = checkVoid(typeExpression(expr.right))
+        val left = typeExpression(expr.left)
+        val right = typeExpression(expr.right)
         val op = expr.type.typedOperator
         if (op != null) {
             val argType = op.argType
@@ -180,7 +184,7 @@ class TypeChecker(
     }
 
     private fun typePrefixExpression(expr: UPrefixExpression): TExpression {
-        val operand = checkVoid(typeExpression(expr.expr))
+        val operand = typeExpression(expr.expr)
         val op = expr.type.typedOperator
         if (op == null) {
             // can be replaced with a subtraction
@@ -199,7 +203,7 @@ class TypeChecker(
     }
 
     private fun typePostfixExpression(expr: UPostfixExpression): TExpression {
-        val operand = checkVoid(typeExpression(expr.expr))
+        val operand = typeExpression(expr.expr)
         val op = expr.type.typedOperator
         val result = op.typer(operand.type)
         if (result == null) {
@@ -212,6 +216,7 @@ class TypeChecker(
     private fun typeVariableDeclaration(decl: UVarDef): TVarDef {
         val type = decl.type
         val name = decl.name
+        val fname = name.copy(pkg = pkg)
         if (type == null) {
             // we have to infer the type
             val first = currentFrame.statements
@@ -220,7 +225,11 @@ class TypeChecker(
                 .firstOrNull { it.name == name }
             if (first != null) {
                 val expr = typeExpression(first.value)
-                return TVarDef(name, expr.type, decl.modifiers, decl.location)
+                if (stack.size == 1) {
+                    // global variable
+                    resolver.addVariable(fname, expr.type, decl.location)
+                }
+                return TVarDef(fname, expr.type, decl.modifiers, decl.location)
             } else {
                 Errors.genericError(
                     "Type inference",
@@ -229,14 +238,22 @@ class TypeChecker(
                 )
             }
         } else {
-            return TVarDef(name, resolver.resolveType(type, decl.location), decl.modifiers, decl.location)
+            val rtype = resolver.resolveType(type, decl.location)
+            if (stack.size == 1) {
+                // global variable
+                resolver.addVariable(fname, rtype, decl.location)
+            }
+            return TVarDef(fname, rtype, decl.modifiers, decl.location)
         }
     }
 
     private fun typeVariableAssignment(node: UVarAssign): TVarAssign {
-        val name = node.name
         val value = typeExpression(node.value)
-        val type = currentFrame.vars.find { it.name == name }?.type ?: Errors.undefinedReference(name, node.location)
+        val found = currentFrame.vars.find { it.name == node.name }
+        val (name, type) = if (found != null) found.name to found.type else resolver.resolveVariable(
+            node.name,
+            node.location
+        )
         if (type.isAssignableFrom(value.type)) {
             return TVarAssign(name, type, value, node.location)
         } else {
@@ -244,15 +261,26 @@ class TypeChecker(
         }
     }
 
-    private fun typeFunctionCall(call: UFunctionCall): TFunctionCall {
-        val name = call.fname
-        val args = call.args.map { typeExpression(it) }
-        val returnType = resolver.findFunction(name.pkg, name.name, args.map(TNode::type), call.location)
-        if (returnType == null) {
-            val errorName = name.toString() + args.joinToString(", ", "(", ")") { it.type.toString() }
-            Errors.undefinedReference(errorName, call.location)
+    private fun typeFunctionCall(call: UCall): TCall {
+        val operand = typeExpression(call.expr)
+        val args = call.args.map(::typeExpression)
+        val functionType = operand.type
+        if (functionType !is FunctionType) {
+            Errors.typeError("Expected a function type, got ${operand.type}", operand.location)
+        }
+        if (functionType.args.size == args.size) {
+            for ((i, arg) in args.withIndex()) {
+                if (!functionType.args[i].isAssignableFrom(arg.type)) {
+                    Errors.typeMismatch(functionType.args[i], arg.type, arg.location)
+                }
+            }
+            return TCall(operand, args, functionType, call.location)
         } else {
-            return TFunctionCall(Identifier(name.name, returnType.first), args, returnType.second, call.location)
+            Errors.genericError(
+                "Function call",
+                "Expected ${functionType.args.size} arguments, got ${args.size}",
+                call.location
+            )
         }
     }
 
@@ -266,17 +294,6 @@ class TypeChecker(
         stack.addFirst(StackFrame(vars, statements, returnType))
         return TStatements(statements.children.map(::type), statements.location).also { stack.removeFirst() }
     }
-}
-
-private fun checkVoid(expr: TExpression): TExpression {
-    if (expr is TFunctionCall && expr.type == VoidType) {
-        Errors.genericError(
-            "Type inference",
-            "The non-returning function ${expr.field} cannot be used in an expression",
-            expr.location
-        )
-    }
-    return expr
 }
 
 private data class StackFrame(val vars: MutableList<TVarDef>, val statements: UStatements, val returnType: Type)

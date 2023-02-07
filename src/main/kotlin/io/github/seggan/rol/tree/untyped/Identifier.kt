@@ -2,31 +2,25 @@ package io.github.seggan.rol.tree.untyped
 
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
-import io.github.seggan.rol.tree.common.Reference
 
-sealed class UIdentifier(val name: String, children: List<UNode>, location: Location) : UExpression(children, location)
+sealed class UIdentifier(val name: Identifier, children: List<UNode>, location: Location) :
+    UExpression(children, location)
 
-class UVariableAccess(name: String, location: Location) : UIdentifier(name, emptyList(), location), Reference {
+class UVariableAccess(name: Identifier, location: Location) : UIdentifier(name, emptyList(), location) {
     override fun toString(): String {
         return "VariableAccess($name)"
     }
 }
 
-class UFunctionCall(val fname: Identifier, val args: List<UExpression>, location: Location) :
-    UIdentifier(fname.name, args, location), Reference {
+class UCall(val expr: UExpression, val args: List<UExpression>, location: Location) :
+    UExpression(args + expr, location) {
     override fun toString(): String {
-        return "FunctionCall($name, ${args.joinToString(", ")})"
+        return "FunctionCall($expr, ${args.joinToString(", ")})"
     }
 }
 
-class UDottedCall(val obj: UExpression, val call: UFunctionCall, location: Location) :
-    UIdentifier(call.fname.name, listOf(obj, call), location), Reference {
-    override fun toString(): String {
-        return "DottedCall($obj, $call)"
-    }
-}
-
-class UAccess(val target: UExpression, name: String, location: Location) : UIdentifier(name, listOf(target), location) {
+class UAccess(val target: UExpression, name: String, location: Location) :
+    UIdentifier(Identifier(name), listOf(target), location) {
     override fun toString(): String {
         return "Access($target, $name)"
     }

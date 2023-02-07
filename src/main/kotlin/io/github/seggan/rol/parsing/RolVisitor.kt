@@ -4,9 +4,11 @@ import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.antlr.RolParserBaseVisitor
 import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.common.Argument
+import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Modifiers
+import io.github.seggan.rol.tree.common.VoidType
 import io.github.seggan.rol.tree.common.location
 import io.github.seggan.rol.tree.common.toIdentifier
 import io.github.seggan.rol.tree.common.toType
@@ -15,11 +17,10 @@ import io.github.seggan.rol.tree.untyped.UAccess
 import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
+import io.github.seggan.rol.tree.untyped.UCall
 import io.github.seggan.rol.tree.untyped.UClassDef
-import io.github.seggan.rol.tree.untyped.UDottedCall
 import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UFieldDef
-import io.github.seggan.rol.tree.untyped.UFunctionCall
 import io.github.seggan.rol.tree.untyped.UIfStatement
 import io.github.seggan.rol.tree.untyped.ULambda
 import io.github.seggan.rol.tree.untyped.UNode
@@ -35,19 +36,15 @@ import io.github.seggan.rol.tree.untyped.UStringLiteral
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
-import io.github.seggan.rol.tree.untyped.asExpr
 
 class RolVisitor : RolParserBaseVisitor<UNode>() {
 
     override fun visitFile(ctx: RolParser.FileContext): UNode {
-        fun flattenStatements(node: UNode): List<UNode> =
-            if (node is UStatements) node.children.flatMap(::flattenStatements) else listOf(node)
-
-        return UStatements(visitChildren(ctx).children.flatMap(::flattenStatements))
+        return visitStatements(ctx.statements())
     }
 
     override fun visitStatements(ctx: RolParser.StatementsContext): UStatements {
-        return UStatements(ctx.statement().map(::visit))
+        return UStatements(ctx.statement().map(::visit).flatMap(::flattenStatements))
     }
 
     override fun visitExpression(ctx: RolParser.ExpressionContext): UExpression {
@@ -73,8 +70,11 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
                 UPostfixOperator.NOT_NULL,
                 ctx.location
             )
-            ctx.identifier() != null -> UAccess(visitExpression(ctx.expression(0)), ctx.identifier().text, ctx.location)
-            ctx.call() != null -> UDottedCall(visitExpression(ctx.expression(0)), visitCall(ctx.call()), ctx.location)
+            ctx.RPAREN() != null -> UCall(
+                visitExpression(ctx.expression(0)),
+                ctx.args.map(::visitExpression),
+                ctx.location
+            )
             ctx.primary() != null -> visitPrimary(ctx.primary())
             else -> throw AssertionError() // should never happen
         }
@@ -98,21 +98,13 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
             ctx.Boolean() != null -> UBooleanLiteral(text.toBoolean(), ctx.location)
             ctx.string() != null -> UStringLiteral(parseString(ctx.string()), ctx.location)
             ctx.Null() != null -> UNullLiteral(ctx.location)
-            ctx.identifier() != null -> UVariableAccess(text, ctx.location)
+            ctx.identifier() != null -> UVariableAccess(ctx.identifier().toIdentifier(), ctx.location)
             else -> visitChildren(ctx) as UExpression
         }
     }
 
-    override fun visitCall(ctx: RolParser.CallContext): UFunctionCall {
-        return UFunctionCall(
-            Identifier.fromNode(ctx.identifier()),
-            ctx.expression().map(::visit).map(UNode::asExpr),
-            ctx.location
-        )
-    }
-
     override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): UNode {
-        val name = ctx.identifier().text
+        val name = ctx.identifier().toIdentifier()
         val def = UVarDef(
             name,
             Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
@@ -127,7 +119,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitAssignment(ctx: RolParser.AssignmentContext): UNode {
-        val name = ctx.identifier().map { it.text }
+        val name = ctx.identifier().map { it.toIdentifier() }
         if (name.size == 1) {
             return UVarAssign(
                 name[0],
@@ -139,7 +131,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
                 ctx.location
             )
         }
-        TODO()
+        TODO("multi-assignment")
     }
 
     override fun visitIfStatement(ctx: RolParser.IfStatementContext): UNode {
@@ -153,6 +145,30 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
 
     // TODO the rest
 
+    override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UNode {
+        val args =
+            ctx.argList().arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) }
+        val functionType = FunctionType(args.map(Argument::type), ctx.type()?.toType() ?: VoidType)
+        return UStatements(
+            UVarDef(
+                ctx.identifier().toIdentifier(),
+                Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
+                functionType,
+                ctx.location
+            ),
+            UVarAssign(
+                ctx.identifier().toIdentifier(),
+                ULambda(
+                    args,
+                    visitStatements(ctx.block().statements()),
+                    functionType,
+                    ctx.location
+                ),
+                ctx.location
+            )
+        )
+    }
+
     override fun visitReturnStatement(ctx: RolParser.ReturnStatementContext): UNode {
         return UReturn(
             if (ctx.expression() == null) null else visitExpression(ctx.expression()),
@@ -162,11 +178,12 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
 
     override fun visitLambda(ctx: RolParser.LambdaContext): ULambda {
         val args = ctx.arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) }
-        return if (ctx.expression() != null) {
-            ULambda(args, UReturn(visitExpression(ctx.expression()), ctx.location).asStatements(), ctx.location)
+        val body = if (ctx.expression() != null) {
+            UReturn(visitExpression(ctx.expression()), ctx.location).asStatements()
         } else {
-            ULambda(args, visitStatements(ctx.statements()), ctx.location)
+            visitStatements(ctx.statements())
         }
+        return ULambda(args, body, ctx.type()?.toType(), ctx.location)
     }
 
     override fun visitClassDeclaration(ctx: RolParser.ClassDeclarationContext): UNode {
@@ -182,16 +199,16 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 }
 
-private fun convertToNormalAssignment(assign: AssignType, name: List<String>, expr: UExpression): UExpression {
+private fun convertToNormalAssignment(assign: AssignType, name: List<Identifier>, expr: UExpression): UExpression {
     return if (assign.operation == null) {
         expr
     } else {
         val access = if (name.size == 1) {
             UVariableAccess(name[0], expr.location)
         } else {
-            var a = UAccess(UVariableAccess(name[0], expr.location), name[1], expr.location)
+            var a = UAccess(UVariableAccess(name[0], expr.location), name[1].name, expr.location)
             for (i in 2 until name.size) {
-                a = UAccess(a, name[i], expr.location)
+                a = UAccess(a, name[i].name, expr.location)
             }
             a
         }
@@ -219,3 +236,7 @@ fun parseString(input: RolParser.StringContext): String {
     }
     return replacements.entries.fold(s) { acc, (regex, replacement) -> regex.replace(acc, replacement) }
 }
+
+
+private fun flattenStatements(node: UNode): List<UNode> =
+    if (node is UStatements) node.children.flatMap(::flattenStatements) else listOf(node)

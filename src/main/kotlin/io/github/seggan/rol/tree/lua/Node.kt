@@ -19,13 +19,13 @@ class LStatements(private val statements: List<LNode>, private val indent: Int =
     fun withIndent(indent: Int) = LStatements(statements, indent)
 }
 
-class LString(private val string: String) : LNode() {
+class LString(private val string: String) : LExpression() {
     override fun transpile(): String {
         return "\"$string\""
     }
 }
 
-class LLiteral(val value: String) : LNode() {
+class LLiteral(val value: String) : LExpression() {
     override fun transpile() = value
 }
 
@@ -41,16 +41,16 @@ class LAssignment(val name: String, private val value: LNode) : LNode() {
     }
 }
 
-class LFunctionCall(val name: String, private val args: List<LNode>) : LNode() {
+sealed class LExpression : LNode()
 
-    constructor(name: String, vararg args: LNode) : this(name, args.toList())
+class LFunctionCall(val expr: LExpression, private val args: List<LExpression>) : LExpression() {
+
+    constructor(expr: LExpression, vararg args: LExpression) : this(expr, args.toList())
 
     override fun transpile(): String {
-        return "$name(${args.joinToString(", ") { it.transpile() }})"
+        return "${expr.transpile()}(${args.joinToString(", ") { it.transpile() }})"
     }
 }
-
-sealed class LExpression : LNode()
 
 class LBinaryExpression(private val left: LNode, private val operator: String, val right: LNode) : LExpression() {
     override fun transpile(): String {
@@ -64,17 +64,9 @@ class LUnaryExpression(private val operator: String, private val value: LNode) :
     }
 }
 
-class LFunctionDefinition(val name: String, val args: List<String>, val body: LStatements) : LNode() {
-
+class LFunction(val args: List<String>, val body: LStatements) : LExpression() {
     override fun transpile(): String {
-        return "function $name(${args.joinToString(", ")})\n${body.transpile()}\nend"
-    }
-}
-
-class LExternDefinition(val name: String, val args: List<String>, val body: String) : LNode() {
-
-    override fun transpile(): String {
-        return "function $name(${args.joinToString(", ")})\n$body\nend"
+        return "function (${args.joinToString(", ")})\n${body.withIndent(1).transpile()}\nend"
     }
 }
 

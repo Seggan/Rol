@@ -19,7 +19,7 @@ usingStatement
     ;
 
 usingInStatement
-    : USING NL* unqualifiedIdentifier NL* (COMMA unqualifiedIdentifier)* NL* IN package
+    : USING NL* ((unqualifiedIdentifier NL* (COMMA unqualifiedIdentifier)*) | STAR) NL* IN package
     ;
 
 statements: (statement (NL | SEMICOLON)+)* statement?;
@@ -64,7 +64,7 @@ arg
     ;
 
 lambda
-    : LBRACE NL* (arg (NL* COMMA NL* arg)* NL* ARROW NL*)? (statements | expression) NL* RBRACE
+    : LBRACE NL* (LPAREN NL* type NL* RPAREN)? (arg (NL* COMMA NL* arg)* NL* ARROW NL*)? (statements | expression) NL* RBRACE
     ;
 
 classDeclaration
@@ -86,8 +86,9 @@ externDeclaration
 
 expression
     : primary
+    | expression NL* DOT NL* expression
+    | expression NL* LPAREN NL* (args+=expression (NL* COMMA NL* args+=expression)*)? NL* RPAREN
     | expression NL* nonNullAssertion=NOT
-    | expression NL* DOT NL* (call | identifier)
     | expression NL* postfixOp=(INC | DEC)
     | prefixOp=(NOT | TILDE | MINUS | INC | DEC) NL* expression
     | expression NL* op=(STAR | SLASH | MOD) NL* expression
@@ -104,17 +105,12 @@ expression
 
 primary
     : LPAREN NL* expression NL* RPAREN
-    | call
     | number
     | string
     | Boolean
     | Null
     | identifier
     | lambda
-    ;
-
-call
-    : identifier NL* LPAREN NL* (expression (NL* COMMA NL* expression)*)? NL* RPAREN
     ;
 
 number
