@@ -72,7 +72,7 @@ classDeclaration
     ;
 
 fieldDeclaration
-    : accessModifier? NL* CONST? NL* VAR NL* identifier COLON NL* type
+    : accessModifier? NL* CONST? NL* VAR NL* identifier (COLON NL* type)? NL* ASSIGN NL* expression
     ;
 
 constructor
@@ -166,7 +166,9 @@ throwStatement
     ;
 
 type
-    : (identifier | DYN | functionType) QUESTION?
+    : ((identifier | DYN | functionType) QUESTION?)
+    | type (NL* AMP NL* type)+
+    | type (NL* PIPE NL* type)+
     ;
 
 functionType

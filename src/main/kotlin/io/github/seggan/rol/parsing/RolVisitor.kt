@@ -196,9 +196,25 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitClassDeclaration(ctx: RolParser.ClassDeclarationContext): UNode {
+        val funs = ctx.functionDeclaration()
+            .map(::visitFunctionDeclaration)
+            .map {
+                val funDef = it.children[0] as UVarDef
+                val funAssign = it.children[1] as UVarAssign
+                UFieldDef(funDef.name, funDef.type, funAssign.value, funDef.location)
+            }
         return UClassDef(
             ctx.identifier(0).toIdentifier(),
-            ctx.fieldDeclaration().map { UFieldDef(it.identifier().toIdentifier(), it.type().toType(), it.location) },
+            ctx.fieldDeclaration().map(::visitFieldDeclaration) + funs,
+            ctx.location
+        )
+    }
+
+    override fun visitFieldDeclaration(ctx: RolParser.FieldDeclarationContext): UFieldDef {
+        return UFieldDef(
+            ctx.identifier().toIdentifier(),
+            ctx.type().toType(),
+            ctx.expression()?.let(::visitExpression),
             ctx.location
         )
     }
