@@ -1,6 +1,6 @@
 # Syntax
 
-These are syntax examples for various problems. As can be seen, it is heavily borrowed from Kotlin.
+As can be seen, it is heavily borrowed from Kotlin.
 
 ## Done
 These are the ones that you can actually run with Rol's current state of development.
@@ -205,4 +205,44 @@ val toString: (Object?) -> String = { magic(it) }
 
 // Forget the lambda, use magic directly
 val toString: (Object?) -> String = magic
+```
+
+## Problems
+Here are some example problems.
+
+### Factorial
+```
+fun factorial(x: Number): Number {
+    if (x == 1) {
+        return 1
+    } else {
+        return x * factorial(x - 1)
+    }
+```
+
+### Fibonacci
+```
+val max = readNumber()
+var x = 1
+var y = 1
+do {
+    val temp = x
+    x = y
+    y = temp + x
+    print(x)
+} while (y < max)
+```
+
+### Selection sort
+```
+fun sort<E>(list: List<E>): List<E> {
+    val new = mutableList<E>()
+    val copy = list.toMutableList()
+    while (copy.isNotEmpty()) {
+        val max = copy.max()
+        new.add(max)
+        copy.remove(max)
+    }
+    return new
+}
 ```
