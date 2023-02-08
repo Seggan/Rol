@@ -277,7 +277,7 @@ class TypeChecker(
                     Errors.typeMismatch(functionType.args[i], arg.type, arg.location)
                 }
             }
-            return TCall(operand, args, functionType, call.location)
+            return TCall(operand, args, functionType.returnType, call.location)
         } else {
             Errors.genericError(
                 "Function call",

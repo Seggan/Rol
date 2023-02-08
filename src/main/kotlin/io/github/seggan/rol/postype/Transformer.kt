@@ -54,7 +54,7 @@ abstract class Transformer : TypedTreeVisitor<TNode>() {
         return TCall(
             call.expr,
             call.args.map(::visit).filterIsInstance<TExpression>(),
-            call.ftype,
+            call.type,
             call.location
         )
     }
