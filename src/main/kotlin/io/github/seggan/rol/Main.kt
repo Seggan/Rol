@@ -1,157 +1,62 @@
 package io.github.seggan.rol
 
-import io.github.seggan.rol.antlr.RolLexer
-import io.github.seggan.rol.antlr.RolParser
-import io.github.seggan.rol.meta.FileUnit
-import io.github.seggan.rol.meta.VariableUnit
-import io.github.seggan.rol.parsing.ImportCollector
-import io.github.seggan.rol.parsing.RolVisitor
-import io.github.seggan.rol.parsing.TypeChecker
-import io.github.seggan.rol.postype.ConstantFolder
-import io.github.seggan.rol.postype.Transpiler
-import io.github.seggan.rol.postype.mangleIdentifier
-import io.github.seggan.rol.resolution.DependencyManager
-import io.github.seggan.rol.resolution.TypeResolver
-import io.github.seggan.rol.tree.common.AccessModifier
-import io.github.seggan.rol.tree.typed.TNode
-import io.github.seggan.rol.tree.typed.TVarDef
-import io.github.seggan.rol.tree.untyped.UStatements
-import kotlinx.cli.ArgParser
-import kotlinx.cli.ArgType
-import kotlinx.cli.multiple
-import kotlinx.cli.required
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-import java.io.ByteArrayOutputStream
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.split
+import com.github.ajalt.clikt.parameters.types.file
 import java.io.File
-import java.io.IOException
-import java.io.PrintStream
-import java.nio.charset.StandardCharsets
-import java.nio.file.FileVisitResult
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.SimpleFileVisitor
-import java.nio.file.attribute.BasicFileAttributes
-import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSameFileAs
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.writeText
-import kotlin.system.exitProcess
 
-fun main(args: Array<String>) {
-    val parser = ArgParser("rol")
-    val file by parser.option(ArgType.String, shortName = "f", description = "File(s) to compile").required()
-    val output by parser.option(ArgType.String, shortName = "o", description = "Output directory")
-    val include by parser.option(ArgType.String, shortName = "i", description = "Include files/directories").multiple()
+fun main(args: Array<String>) = ArgParser().main(args)
 
-    parser.parse(args)
+private class ArgParser : CliktCommand() {
 
-    val theFile = Path.of(file)
-    if (!theFile.exists()) {
-        System.err.println("File $file does not exist")
-        exitProcess(1)
-    }
-    val path = System.getenv("ROL_HOME")?.split(File.pathSeparatorChar)?.map(Path::of)?.toMutableList()
-        ?: mutableListOf()
-    path.add(theFile.parent)
-    val includePaths = include.map(Path::of).filter(Files::exists)
-    path.addAll(includePaths.filter(Files::isDirectory))
+    val file by argument(help = "File to compile").file(mustExist = true, canBeDir = false, mustBeReadable = true)
+    val output by option("-o", "--output", help = "Output file name")
+        .file(mustExist = false, canBeDir = false, mustBeWritable = false)
+    val include by option("-I", "--include", help = "Include files/directories")
+        .file(mustExist = true, canBeDir = true, mustBeReadable = true)
+        .split("""\s+""".toRegex())
+        .default(emptyList())
+    val interpret by option("-i", "--interpret", help = "Interpret instead of compiling")
+        .flag("-c", "--compile")
 
-    val files = path.flatMap { p ->
-        val files = mutableListOf<Path>()
-        Files.walkFileTree(p, object : SimpleFileVisitor<Path>() {
-            override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                if (file.extension == "lua") {
-                    files.add(file)
-                }
-                return FileVisitResult.CONTINUE
-            }
+    override fun run() {
+        val theFile = file.toPath()
+        val path = System.getenv("ROL_HOME")?.split(File.pathSeparatorChar)?.map(Path::of)?.toMutableList()
+            ?: mutableListOf()
+        path.add(theFile.parent)
+        val includePaths = include.map(File::toPath).filter(Files::exists)
+        path.addAll(includePaths.filter(Files::isDirectory))
 
-            override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult {
-                return FileVisitResult.CONTINUE // ignore
-            }
+        val compiledThis = theFile.resolveSibling("${theFile.nameWithoutExtension}.lua")
+
+        var (unit, dependencyManager) = compile(theFile, getFiles(path) + include.map(File::toPath).filter {
+            it.isRegularFile() && it.extension == "lua" && !it.isSameFileAs(compiledThis)
         })
-        files
-    }
+        unit = unit.copy(text = dependencyManager.usedDependencies.joinToString("") {
+            "require \"${it.simpleName}\"\n"
+        } + unit.text)
 
-    val compiledThis = theFile.resolveSibling("${theFile.nameWithoutExtension}.lua")
-
-    var unit = compile(theFile, files + include.map(Path::of).filter {
-        it.isRegularFile() && it.extension == "lua" && !it.isSameFileAs(compiledThis)
-    })
-    unit = unit.copy(text = DEPENDENCY_MANAGER.usedDependencies.joinToString("") {
-        "require \"${it.simpleName}\"\n"
-    } + unit.text)
-
-    val outputName = output ?: theFile.nameWithoutExtension
-    theFile.resolveSibling("$outputName.lua").writeText(unit.serialize())
-    Files.newOutputStream(theFile.resolveSibling("rol_core.lua")).use { stream ->
-        FileUnit::class.java.getResourceAsStream("/rol_core.lua")!!.use {
-            it.copyTo(stream)
+        if (interpret) {
+            RolInterpreter(unit.serialize(), path).run()
+        } else {
+            val outputFile = output?.toPath() ?: theFile.resolveSibling("${theFile.nameWithoutExtension}.lua")
+            outputFile.writeText(unit.serialize())
         }
     }
 }
 
-private lateinit var DEPENDENCY_MANAGER: DependencyManager
-lateinit var CURRENT_FILE: String
-
-fun compile(path: Path, files: List<Path>): FileUnit {
-    // temporarily replace STDERR to catch ANTLR errors
-    val stderr = System.err
-    val newErr = ByteArrayOutputStream()
-    System.setErr(PrintStream(newErr))
-
-    val stream = CommonTokenStream(RolLexer(CharStreams.fromPath(path, StandardCharsets.UTF_8)))
-    val parsed = RolParser(stream).file()
-
-    CURRENT_FILE = path.fileName.toString()
-
-    System.err.flush()
-    System.setErr(stderr)
-    if (newErr.size() > 0) {
-        newErr.writeTo(System.err)
-        exitProcess(1)
-    }
-
-    val pkg = parsed.packageStatement()?.package_()?.text ?: "unnamed"
-
-    val ast = parsed.accept(RolVisitor()) as UStatements
-    println(ast)
-
-    val collector = ImportCollector()
-    parsed.accept(collector)
-
-    val explicitImports = collector.explicitImports + ("rol" to setOf())
-    DEPENDENCY_MANAGER = DependencyManager(files, explicitImports)
-
-    val resolver = TypeResolver(DEPENDENCY_MANAGER, pkg, collector.imports + explicitImports.keys)
-    var typedAst: TNode = TypeChecker(resolver, pkg).typeAst(ast)
-    var folder: ConstantFolder
-    do {
-        folder = ConstantFolder()
-        typedAst = folder.start(typedAst)
-    } while (folder.changed)
-
-    val transpiler = Transpiler(resolver)
-    val transpiledAst = transpiler.start(typedAst)
-    return FileUnit(
-        path.nameWithoutExtension,
-        pkg,
-        collector.imports + collector.explicitImports.keys,
-        typedAst.children
-            .filterIsInstance<TVarDef>()
-            .filter { it.modifiers.access == AccessModifier.PUBLIC }
-            .mapTo(mutableSetOf()) {
-                VariableUnit(
-                    it.name.name,
-                    mangleIdentifier(it.name, it.type),
-                    it.type
-                )
-            },
-        setOf(),
-        setOf(),
-        transpiledAst.transpile()
-    )
+fun getResource(name: String): InputStream? {
+    return ArgParser::class.java.getResourceAsStream("/$name")
 }

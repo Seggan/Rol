@@ -1,6 +1,4 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.nio.file.Files
-import java.nio.file.Path as JPath
 
 plugins {
     kotlin("jvm") version "1.7.10"
@@ -22,7 +20,8 @@ dependencies {
     antlr("org.antlr:antlr4:4.11.1")
 
     implementation("com.beust:klaxon:5.6")
-    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
+    implementation("com.github.ajalt.clikt:clikt:3.5.0")
+    implementation("org.luaj:luaj-jse:3.0.1")
 
     testImplementation(kotlin("test"))
 }
@@ -49,19 +48,19 @@ tasks.compileKotlin {
 
 tasks.generateGrammarSource {
     maxHeapSize = "128m"
-    val path = JPath.of("$buildDir/generated-src/")
+    val path = File("$buildDir/generated-src/")
     val fullPath = path.resolve("antlr/main/io/github/seggan/rol/antlr/")
     doFirst {
-        Files.createDirectories(fullPath)
+        fullPath.mkdirs()
     }
     arguments = arguments + listOf(
-        "-lib", fullPath.toAbsolutePath().toString(),
+        "-lib", fullPath.absoluteFile.toString(),
         "-visitor",
         "-no-listener",
         "-encoding", "UTF-8",
         "-package", "io.github.seggan.rol.antlr"
     )
-    outputDirectory = fullPath.toFile()
+    outputDirectory = fullPath
 }
 
 tasks.shadowJar {
@@ -71,20 +70,22 @@ tasks.shadowJar {
 tasks.register("compileStdlib") {
     dependsOn(tasks.shadowJar)
     doLast {
-        val compiler = JPath.of("$buildDir/libs/$jarName")
-        val stdlib = JPath.of("$projectDir/src/main/rol")
-        Files.walk(stdlib).forEach { file ->
-            if (file.fileName.toString().endsWith(".lua")) {
-                Files.delete(file)
-            }
-        }
-        Files.walk(stdlib).forEach { file ->
-            if (file.fileName.toString().endsWith(".rol")) {
+        val compiler = File("$buildDir/libs/$jarName")
+        val stdlib = File("$projectDir/src/main/rol")
+        val dest = File("$projectDir/src/main/resources/stdlib")
+        val list = mutableListOf<String>()
+        dest.deleteRecursively()
+        dest.mkdirs()
+        stdlib.walk().filter(File::isFile).forEach { file ->
+            if (file.extension == "rol") {
+                val name = file.nameWithoutExtension
+                list += name
                 javaexec {
                     classpath = files(compiler)
-                    args = listOf("-f", file.toAbsolutePath().toString())
+                    args = listOf(file.absoluteFile.toString(), "-o", dest.resolve("$name.lua").absoluteFile.toString())
                 }
             }
         }
+        dest.resolve("list.txt").writeText(list.joinToString("\n"))
     }
 }
