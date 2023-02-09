@@ -192,7 +192,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         } else {
             visitStatements(ctx.statements())
         }
-        return ULambda(args, body, ctx.type()?.toType(), ctx.location)
+        return ULambda(args, body, ctx.type()?.toType() as FunctionType, ctx.location)
     }
 
     override fun visitClassDeclaration(ctx: RolParser.ClassDeclarationContext): UNode {

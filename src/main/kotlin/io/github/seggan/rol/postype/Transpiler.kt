@@ -48,6 +48,13 @@ class Transpiler(
 
     private lateinit var dontMangle: Set<String>
 
+    private val escapes = mapOf(
+        '\n' to "\\n",
+        '\r' to "\\r",
+        '\t' to "\\t",
+        '"' to "\\\"",
+    )
+
     override fun start(node: TNode): LNode {
         dontMangle = object : NodeCollector<TExtern>() {
             override fun visitExtern(extern: TExtern) = add(extern)
@@ -96,7 +103,19 @@ class Transpiler(
     }
 
     override fun visitString(string: TString): LNode {
-        return LString(string.value)
+        var str = string.value
+        escapes.forEach { (k, v) ->
+            val sb = StringBuilder(str.length)
+            str.forEach { c ->
+                if (c == k) {
+                    sb.append(v)
+                } else {
+                    sb.append(c)
+                }
+            }
+            str = sb.toString()
+        }
+        return LString(str)
     }
 
     override fun visitBoolean(bool: TBoolean): LNode {

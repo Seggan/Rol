@@ -74,8 +74,11 @@ tasks.register("compileStdlib") {
         val stdlib = File("$projectDir/src/main/rol")
         val dest = File("$projectDir/src/main/resources/stdlib")
         val list = mutableListOf<String>()
+        val listFile = dest.resolve("list.txt")
         dest.deleteRecursively()
         dest.mkdirs()
+        // recreate the list file so if the stdlib compilation borks, the next compilation won't start throwing errors
+        listFile.createNewFile()
         stdlib.walk().filter(File::isFile).forEach { file ->
             if (file.extension == "rol") {
                 val name = file.nameWithoutExtension
@@ -86,6 +89,6 @@ tasks.register("compileStdlib") {
                 }
             }
         }
-        dest.resolve("list.txt").writeText(list.joinToString("\n"))
+        listFile.writeText(list.joinToString("\n"))
     }
 }
