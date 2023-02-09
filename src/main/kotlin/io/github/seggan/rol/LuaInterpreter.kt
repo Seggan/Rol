@@ -21,20 +21,27 @@ class RolInterpreter(val code: String, val paths: List<Path>) {
         globals.load(code).call()
     }
 
-    inner class CustomRequire : OneArgFunction() {
+    private inner class CustomRequire : OneArgFunction() {
+
+        private val used = mutableSetOf<String>()
+
         override fun call(arg: LuaValue): LuaValue {
             if (arg is LuaString) {
                 val name = arg.tojstring()
+                if (name in used) return LuaValue.NIL
                 if (name == "rol_core") {
+                    used.add(name)
                     val core = "rol_core.lua"
                     return globals.load(getResource(core), core, "t", globals).call()
                 } else {
                     val stdStream = getResource("stdlib/$name.lua")
                     if (stdStream != null) {
+                        used.add(name)
                         return globals.load(stdStream, "$name.lua", "t", globals).call()
                     } else {
                         for (path in paths) {
                             if (path.nameWithoutExtension == name && path.exists()) {
+                                used.add(name)
                                 return globals.loadfile(path.toAbsolutePath().toString()).call()
                             }
                         }
