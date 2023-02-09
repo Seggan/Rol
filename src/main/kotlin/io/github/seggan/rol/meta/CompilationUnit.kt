@@ -2,7 +2,6 @@ package io.github.seggan.rol.meta
 
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Klaxon
-import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import kotlin.io.path.extension
 import kotlin.io.path.nameWithoutExtension
@@ -35,14 +34,17 @@ data class FileUnit(
     companion object : CompilationUnitParser<FileUnit?, Path> {
         override fun parse(version: Int, data: Path): FileUnit? {
             if (data.extension != "lua") return null
-            val code = data.readText(StandardCharsets.UTF_8)
-            val metaString = META_REGEX.find(code)?.groupValues?.get(1) ?: return null
+            return parse(data.readText())?.copy(simpleName = data.nameWithoutExtension)
+        }
+
+        fun parse(data: String): FileUnit? {
+            val metaString = META_REGEX.find(data)?.groupValues?.get(1) ?: return null
             val meta = klaxon.parseJsonObject(metaString.reader())
             val ver = meta.int("version") ?: return null
             return when (ver) {
                 1 -> parseV1(meta)
                 else -> null
-            }?.copy(simpleName = data.nameWithoutExtension, text = code)
+            }?.copy(text = data)
         }
 
         private fun parseV1(data: JsonObject): FileUnit {

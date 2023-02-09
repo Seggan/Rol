@@ -1,5 +1,6 @@
 package io.github.seggan.rol.resolution
 
+import io.github.seggan.rol.getResource
 import io.github.seggan.rol.meta.CompilationUnit
 import io.github.seggan.rol.meta.FileUnit
 import java.nio.file.Path
@@ -8,6 +9,9 @@ class DependencyManager(files: List<Path>, explicit: Map<String, Set<String>>) {
 
     private val loadedDependencies by lazy {
         files.mapNotNull { FileUnit.parse(-1, it) }
+    }
+    private val stdlib = getResource("stdlib/list.txt")!!.reader().readLines().map {
+        FileUnit.parse(getResource("stdlib/$it.lua")!!.reader().readText())!!.copy(simpleName = it)
     }
     val usedDependencies = mutableSetOf<FileUnit>()
 
@@ -31,6 +35,10 @@ class DependencyManager(files: List<Path>, explicit: Map<String, Set<String>>) {
     }
 
     fun getPackage(pkg: String): List<FileUnit> {
+        val stdlib = stdlib.filter { it.pkg == pkg }
+        if (stdlib.isNotEmpty()) {
+            return stdlib
+        }
         return loadedDependencies.filter { it.pkg == pkg }
     }
 
