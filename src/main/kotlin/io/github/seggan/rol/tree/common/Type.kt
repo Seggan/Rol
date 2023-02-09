@@ -148,8 +148,8 @@ class FunctionType(val args: List<Type>, val returnType: Type) :
     override fun nullable(): FunctionType = this
 
     override fun isAssignableFrom(other: Type): Boolean {
-        if (other !is FunctionType) return false
         if (super.isAssignableFrom(other)) return true
+        if (other !is FunctionType) return false
         if (args.size != other.args.size) return false
         return args.zip(other.args)
             .all { (a, b) -> a.isAssignableFrom(b) } && returnType.isAssignableFrom(other.returnType)

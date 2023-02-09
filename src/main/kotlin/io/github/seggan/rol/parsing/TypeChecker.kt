@@ -4,6 +4,8 @@ import io.github.seggan.rol.Errors
 import io.github.seggan.rol.postype.NodeCollector
 import io.github.seggan.rol.resolution.TypeResolver
 import io.github.seggan.rol.tree.common.AccessModifier
+import io.github.seggan.rol.tree.common.AnyType
+import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
@@ -87,24 +89,29 @@ class TypeChecker(
 
     private fun typeLambda(node: ULambda): TLambda {
         val args = node.args.map { it.copy(type = resolver.resolveType(it.type, it.location)) }
-        val body = typeStatements(node.body, args.map {
-            TVarDef(
-                Identifier(it.name),
-                it.type,
-                Modifiers(
-                    AccessModifier.PRIVATE,
-                    const = true
-                ),
-                it.location
-            )
-        })
+        val returnTypeGiven = node.type?.let { resolver.resolveType(it.returnType, node.location) }
+        val body = typeStatements(
+            node.body,
+            args.map {
+                TVarDef(
+                    Identifier(it.name),
+                    it.type,
+                    Modifiers(
+                        AccessModifier.PRIVATE,
+                        const = true
+                    ),
+                    it.location
+                )
+            },
+            returnTypeGiven ?: AnyType
+        )
         val returns = object : NodeCollector<TReturn>() {
             override fun visitReturn(ret: TReturn) = add(ret)
         }.collect(body)
-        val returnType = node.returnType ?: returns.map(TNode::type).reduce { a, b ->
+        val returnType = returnTypeGiven ?: returns.map(TNode::type).reduce { a, b ->
             if (a.isAssignableFrom(b)) b else if (b.isAssignableFrom(a)) a else Errors.typeMismatch(a, b, node.location)
         }
-        return TLambda(args, body, returnType, node.location)
+        return TLambda(args, body, FunctionType(args.map(Argument::type), returnType), node.location)
     }
 
     private fun typeReturn(node: UReturn): TNode {

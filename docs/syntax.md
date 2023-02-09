@@ -7,29 +7,28 @@ These are the ones that you can actually run with Rol's current state of develop
 
 ### Hello, World!
 ```
-print("Hello, World!")
+println("Hello, World!")
 ```
 
 ### Math
 ```
 var x = 1
 var y = 2.1
-print(x / y)
+println(x / y)
 ```
 
 ### I/O
 ```
-print("What is your name?")
-var name = readLine()
-print("Hello, " + name)
+var name = input("What is your name? ")
+println("Hello, " + name)
 ```
 
 ### Branching
 ```
 if (readNumber() % 2 == 0) {
-    print("The number is even")
+    println("The number is even")
 } else {
-    print("The number is odd")
+    println("The number is odd")
 }
 ```
 
@@ -39,19 +38,19 @@ fun double(x: Number): Number {
     return x * x
 }
 
-print(double(2))
+println(double(2))
 ```
 
 ### Nullable types
 ```
 var nullableNum: Number? = 1
-print(nullableNum) // 1
+println(nullableNum) // 1
 nullableNum = null
-print(nullableNum) // null
+println(nullableNum) // null
 ```
 
 ### Embedded Lua
-This is actual code you can find in the `rio` file of the stdlib.
+This was actual code you can find in the `rio` file of the stdlib, if you go back long enough.
 ```
 fun print(x: dyn?) {
     extern (x) {
@@ -82,7 +81,7 @@ val toString = { x: Object? ->
     return magic(x)
 }
 
-print(toString(1))
+println(toString(1))
 ```
 
 ## Planned
@@ -105,7 +104,7 @@ class Complex {
         this.imag = imag
     }
 }
-print(Complex(1, 0))
+println(Complex(1, 0))
 ```
 
 ### Primary constructors
@@ -124,25 +123,25 @@ type Car = Automobile // can also be used as type aliases
 ```
 // C style
 for (i = 0; i < 10; i++) {
-    print(i)
+    println(i)
 }
 
 // Foreach
 for (i in 0..9) {
-    print(i)
+    println(i)
 }
 
 // While
 var i = 0
 while (i < 10) {
-    print(i)
+    println(i)
     i++
 }
 
 // Do-while
 var i = 0
 do {
-    print(i)
+    println(i)
     i++
 } while (i < 10)
 ```
@@ -160,7 +159,7 @@ fun parseNum(s: String): Result<Number, ParseError> {
 do {
     throw WhateverError()
 } catch (e: WhateverError) {
-    print("Caught")
+    println("Caught")
 }
 ```
 
@@ -171,7 +170,7 @@ class MissingInteger : Effect<Number>() {}
 
 do {
     var x = raise MissingInteger()
-    print(x) // 10
+    println(x) // 10
 } catch (e: MissingInteger) {
     continue using 10
 }
@@ -229,14 +228,14 @@ do {
     val temp = x
     x = y
     y = temp + x
-    print(x)
+    println(x)
 } while (y < max)
 ```
 
 ### Selection sort
 ```
 fun sort<E>(list: List<E>): List<E> {
-    val new = mutableList<E>()
+    val new: MutableList<E> = []
     val copy = list.toMutableList()
     while (copy.isNotEmpty()) {
         val max = copy.max()
