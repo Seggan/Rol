@@ -19,7 +19,7 @@ import kotlin.io.path.writeText
 
 fun main(args: Array<String>) = ArgParser().main(args)
 
-private class ArgParser : CliktCommand() {
+private class ArgParser : CliktCommand(name = "java -jar Rol-<version>.jar") {
 
     val file by argument(help = "File to compile").file(mustExist = true, canBeDir = false, mustBeReadable = true)
     val output by option("-o", "--output", help = "Output file name")
