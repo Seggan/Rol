@@ -38,7 +38,7 @@ declaration
     ;
 
 varDeclaration
-    : accessModifier? CONST? NL* VAR NL* identifier (COLON NL* type)? NL* (ASSIGN NL* expression)?
+    : accessModifier? CONST? NL* VAR NL* unqualifiedIdentifier (COLON NL* type)? NL* (ASSIGN NL* expression)?
     ;
 
 assignment

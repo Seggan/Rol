@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.split
 import com.github.ajalt.clikt.parameters.types.file
+import mu.KotlinLogging
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
@@ -16,8 +17,18 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSameFileAs
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.writeText
+import kotlin.system.exitProcess
 
-fun main(args: Array<String>) = ArgParser().main(args)
+private val logger = KotlinLogging.logger {  }
+
+fun main(args: Array<String>) {
+    try {
+        ArgParser().main(args)
+    } catch (e: Exception) {
+        logger.error(e) { "An error occurred" }
+        exitProcess(1)
+    }
+}
 
 private class ArgParser : CliktCommand(name = "java -jar Rol-<version>.jar") {
 

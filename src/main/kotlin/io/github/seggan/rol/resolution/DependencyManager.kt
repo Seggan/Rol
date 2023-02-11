@@ -11,7 +11,9 @@ class DependencyManager(files: List<Path>, explicit: Map<String, Set<String>>) {
         files.mapNotNull { FileUnit.parse(-1, it) }
     }
     private val stdlib = getResource("stdlib/list.txt")!!.reader().readLines().map {
-        FileUnit.parse(getResource("stdlib/$it.lua")!!.reader().readText())!!.copy(simpleName = it)
+        getResource("stdlib/$it.lua")?.let { f ->
+            FileUnit.parse(f.reader().readText())!!.copy(simpleName = it)
+        } ?: error("Could not find stdlib file $it")
     }
     val usedDependencies = mutableSetOf<FileUnit>()
 

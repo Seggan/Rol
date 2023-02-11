@@ -2,7 +2,12 @@ package io.github.seggan.rol
 
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
+import mu.KotlinLogging
+import java.io.PrintWriter
+import java.io.StringWriter
 import kotlin.system.exitProcess
+
+private val logger = KotlinLogging.logger {}
 
 object Errors {
 
@@ -23,7 +28,14 @@ object Errors {
     }
 
     fun genericError(type: String, message: String, location: Location): Nothing {
-        System.err.println("$type error at $location: $message")
+        val msg = "$type error at $location: $message"
+        System.err.println(msg)
+        val stringWriter = StringWriter()
+        val printWriter = PrintWriter(stringWriter)
+        Thread.currentThread().stackTrace.drop(1).forEach { printWriter.println(it) }
+        logger.debug {
+            msg + "\n" + stringWriter.toString().trim().prependIndent("\tat ")
+        }
         exitProcess(1)
     }
 }

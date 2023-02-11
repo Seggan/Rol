@@ -86,5 +86,5 @@ data class FileUnit(
     }
 }
 
-private val META_REGEX = "^\\s*-- ROLMETA (\\{.+})\\n".toRegex()
+private val META_REGEX = """^\s*-- ROLMETA (\{.+})\r?\n""".toRegex()
 private val klaxon = Klaxon()

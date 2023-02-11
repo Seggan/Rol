@@ -23,6 +23,11 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
     implementation("org.luaj:luaj-jse:3.0.1")
 
+    // logging
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.4")
+    implementation("ch.qos.logback:logback-classic:1.4.5")
+    implementation("ch.qos.logback:logback-core:1.4.5")
+
     testImplementation(kotlin("test"))
 }
 

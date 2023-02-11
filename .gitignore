@@ -6,6 +6,7 @@ ulua/
 !**/src/main/**/build/
 !**/src/test/**/build/
 /rolbuild
+*.log
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

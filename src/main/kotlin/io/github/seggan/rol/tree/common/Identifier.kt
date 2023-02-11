@@ -1,3 +1,5 @@
+
+
 package io.github.seggan.rol.tree.common
 
 import io.github.seggan.rol.antlr.RolParser
@@ -21,4 +23,8 @@ data class Identifier(val name: String, val pkg: String? = null) {
 
 fun RolParser.IdentifierContext.toIdentifier(): Identifier {
     return Identifier(this.unqualifiedIdentifier().text, this.package_()?.text)
+}
+
+fun RolParser.UnqualifiedIdentifierContext.toIdentifier(): Identifier {
+    return Identifier(this.text)
 }

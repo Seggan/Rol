@@ -16,6 +16,7 @@ import io.github.seggan.rol.tree.common.AccessModifier
 import io.github.seggan.rol.tree.typed.TNode
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.untyped.UStatements
+import mu.KotlinLogging
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.ByteArrayOutputStream
@@ -33,6 +34,7 @@ import kotlin.system.exitProcess
 
 
 lateinit var CURRENT_FILE: String
+private val logger = KotlinLogging.logger {}
 
 internal fun getFiles(path: List<Path>): List<Path> {
     return path.flatMap { p ->
@@ -54,6 +56,7 @@ internal fun getFiles(path: List<Path>): List<Path> {
 }
 
 fun compile(path: Path, files: List<Path>): Pair<FileUnit, DependencyManager> {
+    logger.debug { "Found include files: " + files.joinToString { it.fileName.toString() } }
     // temporarily replace STDERR to catch ANTLR errors
     val stderr = System.err
     val newErr = ByteArrayOutputStream()

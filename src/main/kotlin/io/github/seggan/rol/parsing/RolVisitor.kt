@@ -113,7 +113,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): UNode {
-        val name = ctx.identifier().toIdentifier()
+        val name = ctx.unqualifiedIdentifier().toIdentifier()
         val def = UVarDef(
             name,
             Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
@@ -214,7 +214,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return UFieldDef(
             ctx.identifier().toIdentifier(),
             ctx.type().toType(),
-            ctx.expression()?.let(::visitExpression),
+            visitExpression(ctx.expression()),
             ctx.location
         )
     }
