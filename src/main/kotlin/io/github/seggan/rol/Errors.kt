@@ -1,5 +1,6 @@
 package io.github.seggan.rol
 
+import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
 import mu.KotlinLogging
@@ -10,6 +11,10 @@ import kotlin.system.exitProcess
 private val logger = KotlinLogging.logger {}
 
 object Errors {
+
+    fun classDefinition(name: Identifier, message: String, location: Location): Nothing {
+        genericError("Class definition", "For class $name: $message", location)
+    }
 
     fun undefinedReference(name: String, location: Location): Nothing {
         genericError("Unknown reference", "$name is not defined", location)

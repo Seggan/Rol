@@ -206,6 +206,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return UClassDef(
             ctx.identifier(0).toIdentifier(),
             ctx.fieldDeclaration().map(::visitFieldDeclaration) + funs,
+            ctx.supers.map { it.toIdentifier() },
             ctx.location
         )
     }

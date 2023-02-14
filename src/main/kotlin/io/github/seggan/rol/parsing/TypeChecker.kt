@@ -9,13 +9,16 @@ import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
+import io.github.seggan.rol.tree.common.InterfaceType
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.VoidType
+import io.github.seggan.rol.tree.common.toType
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TCall
+import io.github.seggan.rol.tree.typed.TClass
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TExtern
 import io.github.seggan.rol.tree.typed.TIfStatement
@@ -36,6 +39,7 @@ import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UCall
+import io.github.seggan.rol.tree.untyped.UClassDef
 import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExtern
 import io.github.seggan.rol.tree.untyped.UIfStatement
@@ -73,6 +77,7 @@ class TypeChecker(
             is UVarAssign -> typeVariableAssignment(node)
             is UReturn -> typeReturn(node)
             is UIfStatement -> typeIfStatement(node)
+            is UClassDef -> typeClass(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
         }
     }
@@ -83,7 +88,7 @@ class TypeChecker(
             Errors.typeMismatch(ConcreteType.BOOLEAN, condition.type, condition.location)
         }
         val body = typeStatements(node.ifTrue)
-        val elseBody = node.ifFalse?.let { typeStatements(it) }
+        val elseBody = node.ifFalse?.let(::typeStatements)
         return TIfStatement(condition, body, elseBody, node.location)
     }
 
@@ -292,6 +297,30 @@ class TypeChecker(
                 call.location
             )
         }
+    }
+
+    private fun typeClass(node: UClassDef): TClass {
+        val name = node.name.copy(pkg = pkg)
+        val superTypes = node.superstuff.map { resolver.resolveType(it.toType(), node.location) }
+        val superClasses = superTypes.filterIsInstance<ConcreteType>()
+        if (superClasses.size > 1) {
+            Errors.classDefinition(
+                name,
+                "Cannot extend multiple classes: " + superClasses.joinToString { it.name.toString() },
+                node.location
+            )
+        }
+        val superClass = superClasses.firstOrNull()
+        val superInterfaces = superTypes.filterIsInstance<InterfaceType>()
+        if (superClasses.size + superInterfaces.size != superTypes.size) {
+            val extras = superTypes.filter { it !is ConcreteType && it !is InterfaceType }
+            Errors.classDefinition(
+                name,
+                "Cannot extend ${extras.joinToString { it.name.toString() }}",
+                node.location
+            )
+        }
+        TODO()
     }
 
     private fun typeStatements(

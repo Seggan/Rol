@@ -40,6 +40,17 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
                 val (paramTypes, units) = type.args.map { resolveTypeInternal(it, location) }.unzip()
                 FunctionType(paramTypes, returnType) to (unit + units.flatten())
             }
+            is ConcreteType -> {
+                if (type.superclass == null) return ConcreteType.OBJECT to setOf()
+                val (superclass, unit) = resolveTypeInternal(type.superclass, location)
+                val (interfaces, units) = type.interfaces.map { resolveTypeInternal(it, location) }.unzip()
+                ConcreteType(
+                    type.name,
+                    type.nullable,
+                    superclass as ConcreteType,
+                    interfaces.filterIsInstance<InterfaceType>()
+                ) to (unit + units.flatten())
+            }
             else -> type to setOf()
         }
     }

@@ -7,6 +7,7 @@ import io.github.seggan.rol.tree.common.Type
 class UClassDef(
     val name: Identifier,
     val fields: List<UFieldDef>,
+    val superstuff: List<Identifier>,
     location: Location
 ) : UNode(fields, location) {
     override fun toString(): String {

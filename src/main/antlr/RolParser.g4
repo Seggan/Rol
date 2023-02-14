@@ -67,8 +67,8 @@ lambda
     ;
 
 classDeclaration
-    : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* identifier)? NL* LBRACE NL*
-    ((fieldDeclaration | constructor | functionDeclaration) NL*)* RBRACE
+    : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* supers+=identifier (NL* COMMA NL* supers+=identifier)*)?
+    NL* LBRACE NL* ((fieldDeclaration | constructor | functionDeclaration) NL*)* RBRACE
     ;
 
 fieldDeclaration
