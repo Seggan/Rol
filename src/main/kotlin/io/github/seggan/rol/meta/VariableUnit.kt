@@ -2,6 +2,7 @@ package io.github.seggan.rol.meta
 
 import com.beust.klaxon.JsonObject
 import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.toType
 
 data class VariableUnit(override val simpleName: String, val mangled: String, val type: Type) : CompilationUnit<JsonObject> {
     companion object : CompilationUnitParser<VariableUnit, JsonObject> {
@@ -16,7 +17,7 @@ data class VariableUnit(override val simpleName: String, val mangled: String, va
             return VariableUnit(
                 data.string("name")!!,
                 data.string("mangled")!!,
-                Type.parse(data.string("type")!!)
+                data.string("type")!!.toType()
             )
         }
     }

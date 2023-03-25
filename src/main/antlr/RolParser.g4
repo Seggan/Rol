@@ -11,7 +11,7 @@ packageStatement
     ;
 
 package
-    : unqualifiedIdentifier (DOT unqualifiedIdentifier)*
+    : id (DOT id)*
     ;
 
 usingStatement
@@ -19,7 +19,7 @@ usingStatement
     ;
 
 usingInStatement
-    : USING NL* ((unqualifiedIdentifier NL* (COMMA unqualifiedIdentifier)*) | STAR) NL* IN package
+    : USING NL* ((id NL* (COMMA id)*) | STAR) NL* IN package
     ;
 
 statements: (statement (NL | SEMICOLON)+)* statement?;
@@ -38,7 +38,7 @@ declaration
     ;
 
 varDeclaration
-    : accessModifier? CONST? NL* VAR NL* unqualifiedIdentifier (COLON NL* type)? NL* (ASSIGN NL* expression)?
+    : accessModifier? CONST? NL* VAR NL* id (COLON NL* type)? NL* (ASSIGN NL* expression)?
     ;
 
 assignment
@@ -59,7 +59,7 @@ argList
     ;
 
 arg
-    : unqualifiedIdentifier COLON NL* type
+    : id COLON NL* type
     ;
 
 lambda
@@ -166,21 +166,41 @@ throwStatement
     ;
 
 type
-    : ((identifier | DYN | functionType) QUESTION?)
-    | type (NL* AMP NL* type)+
-    | type (NL* PIPE NL* type)+
+    : functionType | parenType | nullableType | typeName | tupleType
     ;
 
+fullType: type EOF;
+
 functionType
-    : LPAREN NL* (args+=type (NL* COMMA NL* args+=type)*)? NL* RPAREN NL* ARROW NL* returnType=type
+    : (recvType NL*)? LPAREN NL* (args+=type (NL* COMMA NL* args+=type)*)? NL* RPAREN NL* ARROW NL* returnType=type
+    ;
+
+recvType
+    : (parenType | nullableType | typeName | tupleType) NL* DOT
+    ;
+
+parenType
+    : LPAREN NL* type NL* RPAREN
+    ;
+
+nullableType
+    : (parenType | typeName) NL* QUESTION
+    ;
+
+tupleType
+    : LPAREN NL* (args+=type (NL* COMMA NL* args+=type)*)? NL* RPAREN
+    ;
+
+typeName
+    : identifier | DYN
     ;
 
 // identifier and soft keywords
 identifier
-    : (package COLON)? unqualifiedIdentifier
+    : (package COLON)? id
     ;
 
-unqualifiedIdentifier
+id
     : Identifier
     | CONST
     | INIT

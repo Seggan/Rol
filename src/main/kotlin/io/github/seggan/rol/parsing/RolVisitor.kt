@@ -113,7 +113,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitVarDeclaration(ctx: RolParser.VarDeclarationContext): UNode {
-        val name = ctx.unqualifiedIdentifier().toIdentifier()
+        val name = ctx.id().toIdentifier()
         val def = UVarDef(
             name,
             Modifiers(AccessModifier.parse(ctx.accessModifier()), ctx.CONST() != null),
@@ -156,7 +156,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
 
     override fun visitFunctionDeclaration(ctx: RolParser.FunctionDeclarationContext): UNode {
         val args =
-            ctx.argList().arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) }
+            ctx.argList().arg().map { Argument(it.id().text, it.type().toType(), it.location) }
         val functionType = FunctionType(args.map(Argument::type), ctx.type()?.toType() ?: VoidType)
         return UStatements(
             UVarDef(
@@ -186,7 +186,7 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
     }
 
     override fun visitLambda(ctx: RolParser.LambdaContext): ULambda {
-        val args = ctx.arg().map { Argument(it.unqualifiedIdentifier().text, it.type().toType(), it.location) }
+        val args = ctx.arg().map { Argument(it.id().text, it.type().toType(), it.location) }
         val body = if (ctx.expression() != null) {
             UReturn(visitExpression(ctx.expression()), ctx.location).asStatements()
         } else {

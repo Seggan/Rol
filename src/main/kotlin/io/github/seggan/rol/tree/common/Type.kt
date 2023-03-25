@@ -1,13 +1,12 @@
 package io.github.seggan.rol.tree.common
 
+import io.github.seggan.rol.antlr.RolLexer
 import io.github.seggan.rol.antlr.RolParser
+import io.github.seggan.rol.antlr.RolParserBaseVisitor
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
 
 sealed class Type(val name: Identifier, val nullable: Boolean = false) {
-
-    companion object {
-
-        fun parse(type: String): Type = FunctionType.parse(type) ?: Identifier.parseString(type).toType()
-    }
 
     abstract fun nonNullable(): Type
     abstract fun nullable(): Type
@@ -127,25 +126,14 @@ class UnresolvedType(name: Identifier, nullable: Boolean = false) : Type(name, n
     }
 }
 
-class FunctionType(val args: List<Type>, val returnType: Type) :
-    Type(Identifier(toString())) {
+class FunctionType(val args: List<Type>, val returnType: Type, val receiverType: Type? = null, nullable: Boolean = false) :
+    Type(Identifier(toString()), nullable) {
 
-    companion object {
-        private val parseRegex = """\((.*)\)\s*->\s*(.*)\??""".toRegex()
-        private val commaRegex = """\s*,\s*""".toRegex()
+    // For some reason Kotlin complains about the above toString call if there is no companion object
+    companion object;
 
-        fun parse(s: String): FunctionType? {
-            val type = s.trim()
-            val match = parseRegex.matchEntire(type) ?: return null
-            val argStr = match.groupValues[1]
-            val args = if (argStr.isEmpty()) listOf() else argStr.split(commaRegex).map { Type.parse(it) }
-            val returnType = Type.parse(match.groupValues[2])
-            return FunctionType(args, returnType)
-        }
-    }
-
-    override fun nonNullable(): FunctionType = this
-    override fun nullable(): FunctionType = this
+    override fun nonNullable(): FunctionType = if (nullable) FunctionType(args, returnType, receiverType) else this
+    override fun nullable(): FunctionType = if (nullable) this else FunctionType(args, returnType, receiverType, true)
 
     override fun isAssignableFrom(other: Type): Boolean {
         if (super.isAssignableFrom(other)) return true
@@ -176,31 +164,56 @@ object VoidType : Type(Identifier("Void")) {
 }
 
 fun RolParser.TypeContext.toType(): Type {
-    if (DYN() != null) {
-        return if (QUESTION() != null) AnyType else DynType
-    } else if (functionType() != null) {
-        val node = functionType()
-        val args = node.args.map { it.toType() }
-        val returnType = node.returnType.toType()
-        return FunctionType(args, returnType)
-    }
-    return Type.parse(text)
+    return TypeWalker.visit(this)
 }
 
 
 fun Identifier.toType(): Type {
-    val nullable = name.endsWith("?")
-    val name = name.removeSuffix("?")
-    if (pkg == null) {
-        return when (name) {
-            ConcreteType.NUMBER.name.name -> ConcreteType.NUMBER.withNullability(nullable)
-            ConcreteType.STRING.name.name -> ConcreteType.STRING.withNullability(nullable)
-            ConcreteType.BOOLEAN.name.name -> ConcreteType.BOOLEAN.withNullability(nullable)
-            ConcreteType.OBJECT.name.name -> ConcreteType.OBJECT.withNullability(nullable)
-            DynType.name.name -> DynType.withNullability(nullable)
-            VoidType.name.name -> VoidType
-            else -> UnresolvedType(Identifier(name), nullable)
-        }
+    return this.toString().toType()
+}
+
+fun String.toType(): Type {
+    val lexer = RolLexer(CharStreams.fromString(this))
+    val parser = RolParser(CommonTokenStream(lexer))
+    return parser.fullType().type().toType()
+}
+
+private object TypeWalker : RolParserBaseVisitor<Type>() {
+
+    override fun visitFunctionType(ctx: RolParser.FunctionTypeContext): Type {
+        val args = ctx.args.map(::visit)
+        val returnType = visit(ctx.returnType)
+        val receiverType = ctx.recvType()?.let(::visit)
+        return FunctionType(args, returnType, receiverType)
     }
-    return UnresolvedType(Identifier(name, pkg), nullable)
+
+    override fun visitNullableType(ctx: RolParser.NullableTypeContext): Type {
+        return visitChildren(ctx).nullable()
+    }
+
+    override fun visitTypeName(ctx: RolParser.TypeNameContext): Type {
+        if (ctx.DYN() != null) return DynType
+        val id = ctx.identifier().toIdentifier()
+        val name = id.name
+        if (id.pkg == null) {
+            when (name) {
+                ConcreteType.NUMBER.name.name -> return ConcreteType.NUMBER
+                ConcreteType.STRING.name.name -> return ConcreteType.STRING
+                ConcreteType.BOOLEAN.name.name -> return ConcreteType.BOOLEAN
+                ConcreteType.OBJECT.name.name -> return ConcreteType.OBJECT
+                VoidType.name.name -> return VoidType
+            }
+        }
+        return UnresolvedType(id)
+    }
+
+    override fun aggregateResult(aggregate: Type?, nextResult: Type?): Type {
+        return nextResult ?: aggregate ?: throw IllegalStateException("No type found")
+    }
+}
+
+open class A(s: String)
+
+class B : A(this.toString()) {
+    companion object
 }

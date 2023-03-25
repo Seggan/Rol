@@ -4,6 +4,7 @@ import com.beust.klaxon.JsonObject
 import io.github.seggan.rol.tree.common.AClass
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Type
+import io.github.seggan.rol.tree.common.toType
 
 class ClassUnit(
     override val name: Identifier,
@@ -23,7 +24,7 @@ class ClassUnit(
 
         private fun parseV1(data: JsonObject): ClassUnit {
             val fields = data.array<JsonObject>("fields")!!.associate {
-                it.string("name")!! to Type.parse(it.string("type")!!)
+                it.string("name")!! to it.string("type")!!.toType()
             }
             return ClassUnit(
                 Identifier.parseString(data.string("name")!!),
@@ -70,7 +71,7 @@ class InterfaceUnit(
 
         private fun parseV1(data: JsonObject): InterfaceUnit {
             val fields = data.array<JsonObject>("fields")!!.associate {
-                it.string("name")!! to Type.parse(it.string("type")!!)
+                it.string("name")!! to it.string("type")!!.toType()
             }
             val superInterfaces = data.array<JsonObject>("superInterfaces")?.map {
                 Identifier.parseString(it.string("name")!!)

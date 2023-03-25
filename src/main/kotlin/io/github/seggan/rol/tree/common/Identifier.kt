@@ -22,9 +22,9 @@ data class Identifier(val name: String, val pkg: String? = null) {
 }
 
 fun RolParser.IdentifierContext.toIdentifier(): Identifier {
-    return Identifier(this.unqualifiedIdentifier().text, this.package_()?.text)
+    return Identifier(this.id().text, this.package_()?.text)
 }
 
-fun RolParser.UnqualifiedIdentifierContext.toIdentifier(): Identifier {
+fun RolParser.IdContext.toIdentifier(): Identifier {
     return Identifier(this.text)
 }
