@@ -33,7 +33,7 @@ statement
 
 declaration
     : varDeclaration
-    | classDeclaration
+    | structDeclaration
     | functionDeclaration
     ;
 
@@ -66,19 +66,13 @@ lambda
     : LBRACE NL* (LPAREN NL* type NL* RPAREN)? (arg (NL* COMMA NL* arg)* NL* ARROW NL*)? (statements | expression) NL* RBRACE
     ;
 
-classDeclaration
-    : accessModifier? NL* CLASS NL* identifier (NL* COLON NL* supers+=identifier (NL* COMMA NL* supers+=identifier)*)?
-    NL* LBRACE NL* ((fieldDeclaration | constructor | functionDeclaration) NL*)* RBRACE
+structDeclaration
+    : accessModifier? NL* STRUCT NL* identifier NL* LBRACE NL* ((fieldDeclaration | functionDeclaration) NL*)* RBRACE
     ;
 
 fieldDeclaration
-    : accessModifier? NL* CONST? NL* VAR NL* identifier (COLON NL* type)? NL* ASSIGN NL* expression
+    : accessModifier? NL* CONST? NL* VAR NL* identifier COLON NL* type
     ;
-
-constructor
-    : accessModifier? NL* INIT NL* argList NL* block
-    ;
-
 expression
     : primary
     | expression NL* DOT NL* expression
@@ -203,7 +197,6 @@ identifier
 id
     : Identifier
     | CONST
-    | INIT
     ;
 
 accessModifier

@@ -18,7 +18,6 @@ import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UCall
-import io.github.seggan.rol.tree.untyped.UClassDef
 import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExtern
 import io.github.seggan.rol.tree.untyped.UFieldDef
@@ -38,7 +37,7 @@ import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
 
-class RolVisitor : RolParserBaseVisitor<UNode>() {
+class ParseTreeVisitor : RolParserBaseVisitor<UNode>() {
 
     override fun visitFile(ctx: RolParser.FileContext): UNode {
         return visitStatements(ctx.statements())
@@ -195,27 +194,10 @@ class RolVisitor : RolParserBaseVisitor<UNode>() {
         return ULambda(args, body, ctx.type()?.toType() as FunctionType, ctx.location)
     }
 
-    override fun visitClassDeclaration(ctx: RolParser.ClassDeclarationContext): UNode {
-        val funs = ctx.functionDeclaration()
-            .map(::visitFunctionDeclaration)
-            .map {
-                val funDef = it.children[0] as UVarDef
-                val funAssign = it.children[1] as UVarAssign
-                UFieldDef(funDef.name, funDef.type, funAssign.value, funDef.location)
-            }
-        return UClassDef(
-            ctx.identifier(0).toIdentifier(),
-            ctx.fieldDeclaration().map(::visitFieldDeclaration) + funs,
-            ctx.supers.map { it.toIdentifier() },
-            ctx.location
-        )
-    }
-
     override fun visitFieldDeclaration(ctx: RolParser.FieldDeclarationContext): UFieldDef {
         return UFieldDef(
             ctx.identifier().toIdentifier(),
             ctx.type().toType(),
-            visitExpression(ctx.expression()),
             ctx.location
         )
     }

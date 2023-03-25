@@ -1,9 +1,9 @@
 package io.github.seggan.rol.resolution
 
 import io.github.seggan.rol.Errors
-import io.github.seggan.rol.meta.ClassUnit
 import io.github.seggan.rol.meta.FileUnit
-import io.github.seggan.rol.meta.InterfaceUnit
+import io.github.seggan.rol.meta.StructUnit
+import io.github.seggan.rol.meta.TraitUnit
 import io.github.seggan.rol.meta.VariableUnit
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
@@ -13,7 +13,6 @@ import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.ResolvedType
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.UnresolvedType
-import io.github.seggan.rol.tree.common.toType
 
 class TypeResolver(private val manager: DependencyManager, val pkg: String, private val imports: Set<String>) {
 
@@ -63,22 +62,22 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
             }
             for (unit in manager.getPackage(t.name.pkg)) {
                 val clazz = unit.findClass(t.name.name)
-                if (clazz is ClassUnit) {
+                if (clazz is StructUnit) {
                     return resolveClass(clazz, location).withNullability(type.nullable) to unit
-                } else if (clazz is InterfaceUnit) {
+                } else if (clazz is TraitUnit) {
                     return resolveInterface(clazz, location).withNullability(type.nullable) to unit
                 }
             }
         } else {
             for ((unit, pkg) in manager.getExplicitlyImported(t.name.name)) {
-                if (unit is ClassUnit) {
+                if (unit is StructUnit) {
                     val resolved = resolveClass(unit, location)
                     return ConcreteType(
                         t.name.copy(pkg = pkg.pkg),
                         type.nullable,
                         resolved.superclass
                     ) to pkg
-                } else if (unit is InterfaceUnit) {
+                } else if (unit is TraitUnit) {
                     val resolved = resolveInterface(unit, location)
                     return InterfaceType(
                         t.name.copy(pkg = pkg.pkg),
@@ -91,8 +90,8 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
         Errors.undefinedReference(t.name.toString(), location)
     }
 
-    private fun resolveClass(clazz: ClassUnit, errorLocation: Location): ConcreteType {
-        val superType = clazz.superClass.toType()
+    private fun resolveClass(clazz: StructUnit, errorLocation: Location): ConcreteType {
+        /*val superType = clazz.superClass.toType()
         if (superType is InterfaceType) {
             Errors.typeError(
                 "Cannot extend interface ${superType.name}",
@@ -103,11 +102,12 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
             clazz.name,
             false,
             superclass = resolveTypeInternal(superType, errorLocation).first as ConcreteType
-        ).also { resolvedTypes[clazz.name] = it }
+        ).also { resolvedTypes[clazz.name] = it }*/
+        TODO()
     }
 
-    private fun resolveInterface(clazz: InterfaceUnit, errorLocation: Location): InterfaceType {
-        val superTypes = clazz.superInterfaces.map { resolveTypeInternal(it.toType(), errorLocation).first }
+    private fun resolveInterface(clazz: TraitUnit, errorLocation: Location): InterfaceType {
+        /*val superTypes = clazz.superInterfaces.map { resolveTypeInternal(it.toType(), errorLocation).first }
         if (superTypes.any { it !is InterfaceType }) {
             Errors.typeError(
                 "Cannot extend non-interface ${superTypes.first { it !is InterfaceType }}",
@@ -118,7 +118,8 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
             clazz.name,
             false,
             extends = superTypes.map { it as InterfaceType }
-        ).also { resolvedTypes[clazz.name] = it }
+        ).also { resolvedTypes[clazz.name] = it }*/
+        TODO()
     }
 
     fun resolveVariable(name: Identifier, location: Location): Pair<Identifier, Type> {

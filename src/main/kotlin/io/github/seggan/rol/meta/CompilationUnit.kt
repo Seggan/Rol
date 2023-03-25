@@ -18,7 +18,7 @@ sealed interface CompilationUnit<D> {
 }
 
 sealed interface CompilationUnitParser<T, D> {
-    fun parse(version: Int, data: D): T
+    fun parse(data: D): T
 }
 
 data class FileUnit(
@@ -26,13 +26,13 @@ data class FileUnit(
     val pkg: String,
     val dependencies: Set<String>,
     val variables: Set<VariableUnit>,
-    val classes: Set<ClassUnit>,
-    val interfaces: Set<InterfaceUnit>,
+    val structs: Set<StructUnit>,
+    val traits: Set<TraitUnit>,
     val text: String
 ) : CompilationUnit<String> {
 
     companion object : CompilationUnitParser<FileUnit?, Path> {
-        override fun parse(version: Int, data: Path): FileUnit? {
+        override fun parse(data: Path): FileUnit? {
             if (data.extension != "lua") return null
             return parse(data.readText())?.copy(simpleName = data.nameWithoutExtension)
         }
@@ -40,21 +40,14 @@ data class FileUnit(
         fun parse(data: String): FileUnit? {
             val metaString = META_REGEX.find(data)?.groupValues?.get(1) ?: return null
             val meta = klaxon.parseJsonObject(metaString.reader())
-            val ver = meta.int("version") ?: return null
-            return when (ver) {
-                1 -> parseV1(meta)
-                else -> null
-            }?.copy(text = data)
+            val pkg = meta.string("package") ?: "unnamed"
+            val dependencies = meta.array<String>("dependencies")!!.toSet()
+            val variables = meta.array<JsonObject>("variables")!!.map { VariableUnit.parse(it) }.toSet()
+            val classes = meta.array<JsonObject>("classes")!!.map { StructUnit.parse(it) }.toSet()
+            val interfaces = meta.array<JsonObject>("interfaces")!!.map { TraitUnit.parse(it) }.toSet()
+            return FileUnit("", pkg, dependencies, variables, classes, interfaces, data)
         }
 
-        private fun parseV1(data: JsonObject): FileUnit {
-            val pkg = data.string("package") ?: "unnamed"
-            val dependencies = data.array<String>("dependencies")!!.toSet()
-            val variables = data.array<JsonObject>("variables")!!.map { VariableUnit.parse(1, it) }.toSet()
-            val classes = data.array<JsonObject>("classes")!!.map { ClassUnit.parse(1, it) }.toSet()
-            val interfaces = data.array<JsonObject>("interfaces")!!.map { InterfaceUnit.parse(1, it) }.toSet()
-            return FileUnit("", pkg, dependencies, variables, classes, interfaces, "")
-        }
     }
 
     override fun serialize(): String {
@@ -64,15 +57,15 @@ data class FileUnit(
                 "package" to pkg,
                 "dependencies" to dependencies.toList(),
                 "variables" to variables.map(VariableUnit::serialize),
-                "classes" to classes.map(ClassUnit::serialize),
-                "interfaces" to interfaces.map(InterfaceUnit::serialize)
+                "classes" to structs.map(StructUnit::serialize),
+                "interfaces" to traits.map(TraitUnit::serialize)
             )
         ).toJsonString()
         return "-- ROLMETA $obj\npackage.path = \"./?.lua;\" .. package.path\nrequire \"rol_core\"\n$text"
     }
 
     fun findClass(name: String): CompilationUnit<*>? {
-        return classes.find { it.name.name == name } ?: interfaces.find { it.name.name == name }
+        return structs.find { it.name.name == name } ?: traits.find { it.name.name == name }
     }
 
     fun findVariable(name: String): VariableUnit? {
@@ -81,8 +74,8 @@ data class FileUnit(
 
     fun findSubunits(obj: String): List<CompilationUnit<*>> {
         return variables.filter { it.simpleName == obj } +
-                classes.filter { it.name.name == obj } +
-                interfaces.filter { it.name.name == obj }
+                structs.filter { it.name.name == obj } +
+                traits.filter { it.name.name == obj }
     }
 }
 

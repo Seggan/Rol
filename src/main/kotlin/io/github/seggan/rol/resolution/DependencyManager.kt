@@ -8,7 +8,7 @@ import java.nio.file.Path
 class DependencyManager(files: List<Path>, explicit: Map<String, Set<String>>) {
 
     private val loadedDependencies by lazy {
-        files.mapNotNull { FileUnit.parse(-1, it) }
+        files.mapNotNull { FileUnit.parse(it) }
     }
     private val stdlib = getResource("stdlib/list.txt")!!.reader().readLines().map {
         getResource("stdlib/$it.lua")?.let { f ->
@@ -24,7 +24,7 @@ class DependencyManager(files: List<Path>, explicit: Map<String, Set<String>>) {
             val pkgUnits = getPackage(pkg)
             if (objs.isEmpty()) {
                 // import all
-                putAll(pkgUnits.associateWith { it.variables + it.classes + it.interfaces })
+                putAll(pkgUnits.associateWith { it.variables + it.structs + it.traits })
             } else {
                 // import specific
                 for (obj in objs) {

@@ -5,7 +5,7 @@ import io.github.seggan.rol.antlr.RolParser
 import io.github.seggan.rol.meta.FileUnit
 import io.github.seggan.rol.meta.VariableUnit
 import io.github.seggan.rol.parsing.ImportCollector
-import io.github.seggan.rol.parsing.RolVisitor
+import io.github.seggan.rol.parsing.ParseTreeVisitor
 import io.github.seggan.rol.parsing.TypeChecker
 import io.github.seggan.rol.postype.ConstantFolder
 import io.github.seggan.rol.postype.Transpiler
@@ -76,7 +76,7 @@ fun compile(path: Path, files: List<Path>): Pair<FileUnit, DependencyManager> {
 
     val pkg = parsed.packageStatement()?.package_()?.text ?: "unnamed"
 
-    val ast = parsed.accept(RolVisitor()) as UStatements
+    val ast = parsed.accept(ParseTreeVisitor()) as UStatements
     println(ast)
 
     val collector = ImportCollector()

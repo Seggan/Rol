@@ -18,9 +18,8 @@ class UClassDef(
 class UFieldDef(
     val name: Identifier,
     val type: Type?,
-    val init: UExpression?,
     location: Location
-) : UNode(listOfNotNull(init), location) {
+) : UNode(listOf(), location) {
     override fun toString(): String {
         return "FieldDef($name, $type)"
     }
