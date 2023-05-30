@@ -14,7 +14,7 @@ class ImportCollector : RolParserBaseVisitor<Unit>() {
 
     override fun visitUsingInStatement(ctx: RolParser.UsingInStatementContext) {
         val pkg = ctx.package_().text
-        val name = ctx.unqualifiedIdentifier().map { it.text }
+        val name = ctx.id().map { it.text }
         explicitImports.getOrPut(pkg) { mutableSetOf() }.addAll(name)
     }
 

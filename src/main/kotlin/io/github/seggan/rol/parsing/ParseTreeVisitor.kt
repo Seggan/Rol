@@ -33,6 +33,7 @@ import io.github.seggan.rol.tree.untyped.UPrefixOperator
 import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
+import io.github.seggan.rol.tree.untyped.UStructDef
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
@@ -192,6 +193,15 @@ class ParseTreeVisitor : RolParserBaseVisitor<UNode>() {
             visitStatements(ctx.statements())
         }
         return ULambda(args, body, ctx.type()?.toType() as FunctionType, ctx.location)
+    }
+
+    override fun visitStructDeclaration(ctx: RolParser.StructDeclarationContext?): UNode {
+        return UStructDef(
+            ctx!!.identifier().toIdentifier(),
+            Modifiers(AccessModifier.parse(ctx.accessModifier()), false),
+            ctx.fieldDeclaration().map(::visitFieldDeclaration),
+            ctx.location
+        )
     }
 
     override fun visitFieldDeclaration(ctx: RolParser.FieldDeclarationContext): UFieldDef {

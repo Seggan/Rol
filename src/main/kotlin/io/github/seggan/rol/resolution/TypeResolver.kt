@@ -8,11 +8,12 @@ import io.github.seggan.rol.meta.VariableUnit
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
-import io.github.seggan.rol.tree.common.InterfaceType
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.ResolvedType
+import io.github.seggan.rol.tree.common.TraitType
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.UnresolvedType
+import io.github.seggan.rol.tree.common.toType
 
 class TypeResolver(private val manager: DependencyManager, val pkg: String, private val imports: Set<String>) {
 
@@ -40,15 +41,22 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
                 FunctionType(paramTypes, returnType) to (unit + units.flatten())
             }
             is ConcreteType -> {
-                if (type.superclass == null) return ConcreteType.OBJECT to setOf()
-                val (superclass, unit) = resolveTypeInternal(type.superclass, location)
-                val (interfaces, units) = type.interfaces.map { resolveTypeInternal(it, location) }.unzip()
+                val fieldMap = type.fields.mapValues { resolveTypeInternal(it.value, location) }
+                val (traits, units) = type.traits.map { resolveTypeInternal(it, location) }.unzip()
                 ConcreteType(
                     type.name,
+                    fieldMap.mapValues { it.value.first },
+                    traits.filterIsInstance<TraitType>(),
                     type.nullable,
-                    superclass as ConcreteType,
-                    interfaces.filterIsInstance<InterfaceType>()
-                ) to (unit + units.flatten())
+                ) to (fieldMap.flatMapTo(mutableSetOf()) { it.value.second } + units.flatten())
+            }
+            is TraitType -> {
+                val (extends, units) = type.extends.map { resolveTypeInternal(it, location) }.unzip()
+                TraitType(
+                    type.name,
+                    type.nullable,
+                    extends.filterIsInstance<TraitType>()
+                ) to units.flatten().toSet()
             }
             else -> type to setOf()
         }
@@ -63,23 +71,24 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
             for (unit in manager.getPackage(t.name.pkg)) {
                 val clazz = unit.findClass(t.name.name)
                 if (clazz is StructUnit) {
-                    return resolveClass(clazz, location).withNullability(type.nullable) to unit
+                    return resolveStruct(clazz, location).withNullability(type.nullable) to unit
                 } else if (clazz is TraitUnit) {
-                    return resolveInterface(clazz, location).withNullability(type.nullable) to unit
+                    return resolveTrait(clazz, location).withNullability(type.nullable) to unit
                 }
             }
         } else {
             for ((unit, pkg) in manager.getExplicitlyImported(t.name.name)) {
                 if (unit is StructUnit) {
-                    val resolved = resolveClass(unit, location)
+                    val resolved = resolveStruct(unit, location)
                     return ConcreteType(
                         t.name.copy(pkg = pkg.pkg),
-                        type.nullable,
-                        resolved.superclass
+                        resolved.fields,
+                        resolved.traits,
+                        type.nullable
                     ) to pkg
                 } else if (unit is TraitUnit) {
-                    val resolved = resolveInterface(unit, location)
-                    return InterfaceType(
+                    val resolved = resolveTrait(unit, location)
+                    return TraitType(
                         t.name.copy(pkg = pkg.pkg),
                         type.nullable,
                         resolved.extends
@@ -90,36 +99,30 @@ class TypeResolver(private val manager: DependencyManager, val pkg: String, priv
         Errors.undefinedReference(t.name.toString(), location)
     }
 
-    private fun resolveClass(clazz: StructUnit, errorLocation: Location): ConcreteType {
-        /*val superType = clazz.superClass.toType()
-        if (superType is InterfaceType) {
-            Errors.typeError(
-                "Cannot extend interface ${superType.name}",
-                errorLocation
-            )
-        }
+    private fun resolveStruct(unit: StructUnit, errorLocation: Location): ConcreteType {
         return ConcreteType(
-            clazz.name,
-            false,
-            superclass = resolveTypeInternal(superType, errorLocation).first as ConcreteType
-        ).also { resolvedTypes[clazz.name] = it }*/
-        TODO()
+            unit.name,
+            unit.fields.mapValues { resolveTypeInternal(it.value, errorLocation).first },
+            listOf(),
+            false
+        ).also { resolvedTypes[unit.name] = it }
     }
 
-    private fun resolveInterface(clazz: TraitUnit, errorLocation: Location): InterfaceType {
-        /*val superTypes = clazz.superInterfaces.map { resolveTypeInternal(it.toType(), errorLocation).first }
-        if (superTypes.any { it !is InterfaceType }) {
-            Errors.typeError(
-                "Cannot extend non-interface ${superTypes.first { it !is InterfaceType }}",
-                errorLocation
-            )
+    private fun resolveTrait(unit: TraitUnit, errorLocation: Location): TraitType {
+        val superTypes = unit.superTraits.map { resolveTypeInternal(it.toType(), errorLocation).first }
+        for (superType in superTypes) {
+            if (superType !is TraitType) {
+                Errors.typeError(
+                    "Cannot extend trait ${superType.name}",
+                    errorLocation
+                )
+            }
         }
-        return InterfaceType(
-            clazz.name,
+        return TraitType(
+            unit.name,
             false,
-            extends = superTypes.map { it as InterfaceType }
-        ).also { resolvedTypes[clazz.name] = it }*/
-        TODO()
+            extends = superTypes.map { it as TraitType }
+        ).also { resolvedTypes[unit.name] = it }
     }
 
     fun resolveVariable(name: Identifier, location: Location): Pair<Identifier, Type> {

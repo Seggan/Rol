@@ -49,68 +49,50 @@ sealed class ResolvedType(name: Identifier, nullable: Boolean = false) : Type(na
 
 class ConcreteType(
     name: Identifier,
+    val fields: Map<String, Type>,
+    val traits: List<TraitType> = listOf(),
     nullable: Boolean = false,
-    superclass: ConcreteType? = null,
-    val interfaces: List<InterfaceType> = listOf()
 ) : ResolvedType(name, nullable) {
 
-    val superclass: ConcreteType? = if (this == OBJECT) null else (superclass ?: OBJECT)
-
     companion object {
-        val OBJECT = ConcreteType(Identifier("Object"))
-        val NUMBER = ConcreteType(Identifier("Number"))
-        val STRING = ConcreteType(Identifier("String"))
-        val BOOLEAN = ConcreteType(Identifier("Boolean"))
+        val NUMBER = ConcreteType(Identifier("Number"), mapOf())
+        val STRING = ConcreteType(Identifier("String"), mapOf())
+        val BOOLEAN = ConcreteType(Identifier("Boolean"), mapOf())
     }
 
-    override fun nonNullable(): ConcreteType = if (nullable) ConcreteType(name) else this
-    override fun nullable(): ConcreteType = if (nullable) this else ConcreteType(name, true)
+    override fun nonNullable(): ConcreteType = if (nullable) copy(nullable = false) else this
+    override fun nullable(): ConcreteType = if (nullable) this else copy(nullable = true)
 
     override fun withNullability(nullable: Boolean): ConcreteType {
         return if (nullable) nullable() else nonNullable()
     }
 
-    fun isSubclassOf(other: ConcreteType): Boolean {
-        return when {
-            this == other -> true
-            superclass != null -> superclass.isSubclassOf(other)
-            else -> false
-        }
-    }
-
-    fun isSubclassOf(other: InterfaceType): Boolean {
-        return when {
-            interfaces.flatMapTo(mutableSetOf()) { setOf(it) + it.superInterfaces }.contains(other) -> true
-            superclass != null -> superclass.isSubclassOf(other)
-            else -> false
-        }
-    }
-
-    override fun isAssignableFrom(other: Type): Boolean {
-        return when {
-            super.isAssignableFrom(other) -> true
-            other is ConcreteType -> other.isSubclassOf(this)
-            else -> false
-        }
+    fun copy(
+        name: Identifier = this.name,
+        fields: Map<String, Type> = this.fields,
+        traits: List<TraitType> = this.traits,
+        nullable: Boolean = this.nullable
+    ): ConcreteType {
+        return ConcreteType(name, fields, traits, nullable)
     }
 }
 
-class InterfaceType(name: Identifier, nullable: Boolean = false, val extends: List<InterfaceType> = listOf()) :
+class TraitType(name: Identifier, nullable: Boolean = false, val extends: List<TraitType> = listOf()) :
     ResolvedType(name, nullable) {
 
-    val superInterfaces: Set<InterfaceType> = extends.flatMapTo(mutableSetOf()) { setOf(it) + it.superInterfaces }
+    val superTraits: Set<TraitType> = extends.flatMapTo(mutableSetOf()) { setOf(it) + it.superTraits }
 
-    override fun nonNullable(): InterfaceType = if (nullable) InterfaceType(name) else this
-    override fun nullable(): InterfaceType = if (nullable) this else InterfaceType(name, true)
+    override fun nonNullable(): TraitType = if (nullable) TraitType(name) else this
+    override fun nullable(): TraitType = if (nullable) this else TraitType(name, true)
 
-    override fun withNullability(nullable: Boolean): InterfaceType {
+    override fun withNullability(nullable: Boolean): TraitType {
         return if (nullable) nullable() else nonNullable()
     }
 
     override fun isAssignableFrom(other: Type): Boolean {
         return when {
             super.isAssignableFrom(other) -> true
-            other is InterfaceType -> other.superInterfaces.contains(this)
+            other is TraitType -> other.superTraits.contains(this)
             else -> false
         }
     }
@@ -126,7 +108,12 @@ class UnresolvedType(name: Identifier, nullable: Boolean = false) : Type(name, n
     }
 }
 
-class FunctionType(val args: List<Type>, val returnType: Type, val receiverType: Type? = null, nullable: Boolean = false) :
+class FunctionType(
+    val args: List<Type>,
+    val returnType: Type,
+    val receiverType: Type? = null,
+    nullable: Boolean = false
+) :
     Type(Identifier(toString()), nullable) {
 
     // For some reason Kotlin complains about the above toString call if there is no companion object
@@ -200,7 +187,6 @@ private object TypeWalker : RolParserBaseVisitor<Type>() {
                 ConcreteType.NUMBER.name.name -> return ConcreteType.NUMBER
                 ConcreteType.STRING.name.name -> return ConcreteType.STRING
                 ConcreteType.BOOLEAN.name.name -> return ConcreteType.BOOLEAN
-                ConcreteType.OBJECT.name.name -> return ConcreteType.OBJECT
                 VoidType.name.name -> return VoidType
             }
         }

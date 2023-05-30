@@ -9,16 +9,13 @@ import io.github.seggan.rol.tree.common.Argument
 import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.FunctionType
 import io.github.seggan.rol.tree.common.Identifier
-import io.github.seggan.rol.tree.common.InterfaceType
 import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 import io.github.seggan.rol.tree.common.VoidType
-import io.github.seggan.rol.tree.common.toType
 import io.github.seggan.rol.tree.typed.TBinaryExpression
 import io.github.seggan.rol.tree.typed.TBinaryOperator
 import io.github.seggan.rol.tree.typed.TBoolean
 import io.github.seggan.rol.tree.typed.TCall
-import io.github.seggan.rol.tree.typed.TClass
 import io.github.seggan.rol.tree.typed.TExpression
 import io.github.seggan.rol.tree.typed.TExtern
 import io.github.seggan.rol.tree.typed.TIfStatement
@@ -32,6 +29,7 @@ import io.github.seggan.rol.tree.typed.TPrefixExpression
 import io.github.seggan.rol.tree.typed.TReturn
 import io.github.seggan.rol.tree.typed.TStatements
 import io.github.seggan.rol.tree.typed.TString
+import io.github.seggan.rol.tree.typed.TStructDef
 import io.github.seggan.rol.tree.typed.TVarAssign
 import io.github.seggan.rol.tree.typed.TVarDef
 import io.github.seggan.rol.tree.typed.TVariableAccess
@@ -39,7 +37,6 @@ import io.github.seggan.rol.tree.untyped.UBinaryExpression
 import io.github.seggan.rol.tree.untyped.UBinaryOperator
 import io.github.seggan.rol.tree.untyped.UBooleanLiteral
 import io.github.seggan.rol.tree.untyped.UCall
-import io.github.seggan.rol.tree.untyped.UClassDef
 import io.github.seggan.rol.tree.untyped.UExpression
 import io.github.seggan.rol.tree.untyped.UExtern
 import io.github.seggan.rol.tree.untyped.UIfStatement
@@ -53,6 +50,7 @@ import io.github.seggan.rol.tree.untyped.UPrefixExpression
 import io.github.seggan.rol.tree.untyped.UReturn
 import io.github.seggan.rol.tree.untyped.UStatements
 import io.github.seggan.rol.tree.untyped.UStringLiteral
+import io.github.seggan.rol.tree.untyped.UStructDef
 import io.github.seggan.rol.tree.untyped.UVarAssign
 import io.github.seggan.rol.tree.untyped.UVarDef
 import io.github.seggan.rol.tree.untyped.UVariableAccess
@@ -77,7 +75,7 @@ class TypeChecker(
             is UVarAssign -> typeVariableAssignment(node)
             is UReturn -> typeReturn(node)
             is UIfStatement -> typeIfStatement(node)
-            is UClassDef -> typeClass(node)
+            is UStructDef -> typeStruct(node)
             else -> throw IllegalArgumentException("Unknown node type: ${node.javaClass}")
         }
     }
@@ -299,27 +297,8 @@ class TypeChecker(
         }
     }
 
-    private fun typeClass(node: UClassDef): TClass {
+    private fun typeStruct(node: UStructDef): TStructDef {
         val name = node.name.copy(pkg = pkg)
-        val superTypes = node.superstuff.map { resolver.resolveType(it.toType(), node.location) }
-        val superClasses = superTypes.filterIsInstance<ConcreteType>()
-        if (superClasses.size > 1) {
-            Errors.classDefinition(
-                name,
-                "Cannot extend multiple classes: " + superClasses.joinToString { it.name.toString() },
-                node.location
-            )
-        }
-        val superClass = superClasses.firstOrNull()
-        val superInterfaces = superTypes.filterIsInstance<InterfaceType>()
-        if (superClasses.size + superInterfaces.size != superTypes.size) {
-            val extras = superTypes.filter { it !is ConcreteType && it !is InterfaceType }
-            Errors.classDefinition(
-                name,
-                "Cannot extend ${extras.joinToString { it.name.toString() }}",
-                node.location
-            )
-        }
         TODO()
     }
 

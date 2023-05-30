@@ -4,7 +4,7 @@ import io.github.seggan.rol.tree.common.ConcreteType
 import io.github.seggan.rol.tree.common.Location
 import io.github.seggan.rol.tree.common.Type
 
-class TClass(
+class TStructDef(
     val cType: ConcreteType,
     val fields: List<TField>,
     location: Location

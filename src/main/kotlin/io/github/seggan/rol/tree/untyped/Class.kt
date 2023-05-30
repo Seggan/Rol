@@ -2,12 +2,13 @@ package io.github.seggan.rol.tree.untyped
 
 import io.github.seggan.rol.tree.common.Identifier
 import io.github.seggan.rol.tree.common.Location
+import io.github.seggan.rol.tree.common.Modifiers
 import io.github.seggan.rol.tree.common.Type
 
-class UClassDef(
+class UStructDef(
     val name: Identifier,
+    val modifiers: Modifiers,
     val fields: List<UFieldDef>,
-    val superstuff: List<Identifier>,
     location: Location
 ) : UNode(fields, location) {
     override fun toString(): String {
