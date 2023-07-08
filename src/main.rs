@@ -9,6 +9,7 @@ use crate::parsing::antlr::lexer::RolLexer;
 use crate::parsing::antlr::parser::RolParser;
 
 mod parsing;
+mod common;
 
 fn main() {
     let args = env::args().collect::<Vec<String>>();

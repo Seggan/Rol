@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-antlr-rust = "0.3.0-beta"
+nom = "7.1.3"
 clap = { version = "4.3.3", features = ["derive"] }
