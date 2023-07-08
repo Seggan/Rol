@@ -38,7 +38,7 @@ declaration
     ;
 
 varDeclaration
-    : accessModifier? CONST? NL* VAR NL* id (COLON NL* aType)? NL* (ASSIGN NL* expression)?
+    : accessModifier? CONST? NL* VAR NL* id (COLON NL* typ)? NL* (ASSIGN NL* expression)?
     ;
 
 assignment
@@ -51,7 +51,7 @@ assignmentOp
     ;
 
 functionDeclaration
-    : accessModifier? NL* FUN NL* identifier NL* argList NL* (COLON NL* aType)? NL* block
+    : accessModifier? NL* FUN NL* identifier NL* argList NL* (COLON NL* typ)? NL* block
     ;
 
 argList
@@ -59,11 +59,11 @@ argList
     ;
 
 arg
-    : id COLON NL* aType
+    : id COLON NL* typ
     ;
 
 lambda
-    : LBRACE NL* (LPAREN NL* aType NL* RPAREN)? (arg (NL* COMMA NL* arg)* NL* ARROW NL*)? (statements | expression) NL* RBRACE
+    : LBRACE NL* (LPAREN NL* typ NL* RPAREN)? (arg (NL* COMMA NL* arg)* NL* ARROW NL*)? (statements | expression) NL* RBRACE
     ;
 
 structDeclaration
@@ -71,7 +71,7 @@ structDeclaration
     ;
 
 fieldDeclaration
-    : accessModifier? NL* CONST? NL* VAR NL* identifier COLON NL* aType
+    : accessModifier? NL* CONST? NL* VAR NL* identifier COLON NL* typ
     ;
 expression
     : primary
@@ -100,14 +100,14 @@ primary
     | Null
     | identifier
     | lambda
-    | anExtern
+    | extrn
     ;
 
 number
     : Number | HexNumber | BinNumber | OctNumber
     ;
 
-anExtern
+extrn
     : EXTERN NL* (EXTERN_LPAREN (EXTERN_ID (EXTERN_COMMA EXTERN_ID)*)? EXTERN_RPAREN)?
         EXTERN_LBRACE EXTERN_CODE* EXTERN_RBRACE
     ;
@@ -159,14 +159,14 @@ throwStatement
     : THROW NL* expression
     ;
 
-aType
+typ
     : functionType | parenType | nullableType | typeName | tupleType
     ;
 
-fullType: aType EOF;
+fullType: typ EOF;
 
 functionType
-    : (recvType NL*)? LPAREN NL* (args+=aType (NL* COMMA NL* args+=aType)*)? NL* RPAREN NL* ARROW NL* returnType=aType
+    : (recvType NL*)? LPAREN NL* (args+=typ (NL* COMMA NL* args+=typ)*)? NL* RPAREN NL* ARROW NL* returnType=typ
     ;
 
 recvType
@@ -174,7 +174,7 @@ recvType
     ;
 
 parenType
-    : LPAREN NL* aType NL* RPAREN
+    : LPAREN NL* typ NL* RPAREN
     ;
 
 nullableType
@@ -182,7 +182,7 @@ nullableType
     ;
 
 tupleType
-    : LPAREN NL* (args+=aType (NL* COMMA NL* args+=aType)*)? NL* RPAREN
+    : LPAREN NL* (args+=typ (NL* COMMA NL* args+=typ)*)? NL* RPAREN
     ;
 
 typeName

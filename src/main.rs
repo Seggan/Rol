@@ -5,10 +5,10 @@ use std::path::Path;
 use antlr_rust::common_token_stream::CommonTokenStream;
 use antlr_rust::InputStream;
 
-use crate::antlr::lexer::RolLexer;
-use crate::antlr::parser::RolParser;
+use crate::parsing::antlr::lexer::RolLexer;
+use crate::parsing::antlr::parser::RolParser;
 
-mod antlr;
+mod parsing;
 
 fn main() {
     let args = env::args().collect::<Vec<String>>();
