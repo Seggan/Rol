@@ -1,21 +1,56 @@
 file = { SOI
     ~ (packageStatement ~ NL)?
-    ~ (import ~ (NL ~ import)*)?
+    ~ (using ~ (NL ~ using)*)?
     ~ statements?
     ~ EOI
 }
 
-packageStatement = { "package" ~ package }
-package = { identifier ~ ("::" ~ identifier)* }
+packageStatement = { "package " ~ package }
+package = @{ identifier ~ ("::" ~ identifier)* }
 
-import = { "import" ~ package }
+using = { "using " ~ package }
 
 statements = { statement ~ (NL ~ statement)* }
-statement = { identifier } // TODO
+statement = { assignment }
 
-identifier = { ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+assignment = { identifier ~ "=" ~ expr}
 
-NL = { ("\r\n" | "\n")+ }
+expr = { prefix? ~ primary ~ postfix? ~ (infix ~ prefix? ~ primary ~ postfix?)* }
 
-WHITESPACE = { " " | "\t" }
-COMMENT = { "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+infix = _{ add | sub | mul | div | modulus | eq | neq | lt | gt | leq | geq | and | or }
+    add = { "+" }
+    sub = { "-" }
+    mul = { "*" }
+    div = { "/" }
+    modulus = { "%" }
+    eq = { "==" }
+    neq = { "!=" }
+    lt = { "<" }
+    gt = { ">" }
+    leq = { "<=" }
+    geq = { ">=" }
+    and = { "&&" }
+    or = { "||" }
+
+prefix = _{ not | neg }
+    not = { "!" }
+    neg = { "-" }
+
+postfix = _{ call | index | assertNotNull }
+    call = { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+    index = { "[" ~ expr ~ "]" }
+    assertNotNull = { "!" }
+
+primary = _{ literal | identifier | "(" ~ expr ~ ")" }
+
+literal = _{ number | string | boolean }
+    number = @{ (ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)*) }
+    string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+    boolean = @{ "true" | "false" }
+
+identifier = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+
+NL = _{ NEWLINE+ }
+
+WHITESPACE = _{ " " | "\t" }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
