@@ -8,7 +8,8 @@ mod common;
 fn main() {
     let args = env::args().collect::<Vec<String>>();
     if let Some(file) = args.first() {
-        let text = read_to_string(Path::new(file)).unwrap();
+        let text = r#"abc"#;
+        println!("{:?}", parsing::parse(&text));
     } else {
         eprintln!("No input file")
     }

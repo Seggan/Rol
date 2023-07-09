@@ -1,6 +1,6 @@
 file = { SOI
-    ~ packageStatement? ~ NL
-    ~ import* ~ NL
+    ~ (packageStatement ~ NL)?
+    ~ (import ~ (NL ~ import)*)?
     ~ statements?
     ~ EOI
 }
