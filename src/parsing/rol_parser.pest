@@ -1,1 +1,21 @@
-test = { ASCII_DIGIT+ }
+file = { SOI
+    ~ packageStatement? ~ NL
+    ~ import* ~ NL
+    ~ statements?
+    ~ EOI
+}
+
+packageStatement = { "package" ~ package }
+package = { identifier ~ ("::" ~ identifier)* }
+
+import = { "import" ~ package }
+
+statements = { statement ~ (NL ~ statement)* }
+statement = { identifier } // TODO
+
+identifier = { ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* }
+
+NL = { ("\r\n" | "\n")+ }
+
+WHITESPACE = { " " | "\t" }
+COMMENT = { "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
