@@ -6,9 +6,9 @@ use pest::{Parser, RuleType};
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 use pest_derive::Parser;
+
 use crate::common::Identifier;
 use crate::error::RolError;
-
 use crate::parsing::ast::{AstNode, Expr, Modifier};
 
 #[derive(Parser)]
@@ -23,16 +23,16 @@ pub fn parse(code: &str) -> AstNode<()> {
 fn parse_pair(pair: Pair<Rule>) -> Vec<AstNode<()>> {
     let rule = pair.as_rule();
     let span = pair.as_span();
-    let mut inner = pair.into_inner();
     match rule {
         Rule::file | Rule::statements => {
-            let statements = inner.map(parse_pair).flatten().collect::<Vec<_>>();
+            let statements = pair.into_inner().map(parse_pair).flatten().collect::<Vec<_>>();
             vec![AstNode::Statements(statements, ())]
         }
         Rule::assignment => {
+            let mut inner = pair.into_inner();
             let modifier = inner.first_node(Rule::variableStarter).map(|p| p.as_str());
             let name = inner.first_node(Rule::qname).unwrap().as_str().parse::<Identifier>().unwrap();
-            let expr = parse_expr(inner.nth(1).unwrap());
+            let expr = parse_expr(pair.into_inner().nth(1).unwrap());
             if let Some(modifier) = modifier {
                 if name.package.is_some() {
                     RolError::IllegalPackage.report();
@@ -47,7 +47,7 @@ fn parse_pair(pair: Pair<Rule>) -> Vec<AstNode<()>> {
                 vec![AstNode::VarAssign(name, expr, ())]
             }
         }
-        Rule::expr => vec![AstNode::Expr(parse_expr(inner.into_iter().next().unwrap()))],
+        Rule::expr => vec![AstNode::Expr(parse_expr(pair))],
         _ => panic!("Unexpected rule: {:?}", rule)
     }
 }
@@ -72,6 +72,28 @@ static PRATT: PrattParser<Rule> = PrattParser::new()
     .op(Op::postfix(Rule::call) | Op::postfix(Rule::index) | Op::postfix(Rule::assertNotNull));
 
 fn parse_expr(pair: Pair<Rule>) -> Expr<()> {
+    assert_eq!(pair.as_rule(), Rule::expr);
+    PRATT
+        .map_primary(parse_primary)
+        .map_prefix(parse_prefix)
+        .map_infix(parse_infix)
+        .map_postfix(parse_postfix)
+        .parse(pair.into_inner())
+}
+
+fn parse_primary(expr: Pair<Rule>) -> Expr<()> {
+    todo!()
+}
+
+fn parse_prefix(op: Pair<Rule>, expr: Expr<()>) -> Expr<()> {
+    todo!()
+}
+
+fn parse_infix(lhs: Expr<()>, op: Pair<Rule>, rhs: Expr<()>) -> Expr<()> {
+    todo!()
+}
+
+fn parse_postfix(expr: Expr<()>, op: Pair<Rule>) -> Expr<()> {
     todo!()
 }
 

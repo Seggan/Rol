@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::process::exit;
 
 use thiserror::Error;
@@ -12,7 +13,7 @@ pub enum RolError {
 
 impl RolError {
     pub fn report(&self) -> ! {
-        eprintln!("Error: {}", self);
+        eprintln!("Parse error: {}", self);
         exit(1)
     }
 }

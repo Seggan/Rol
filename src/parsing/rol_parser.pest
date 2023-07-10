@@ -16,7 +16,7 @@ assignment = { variableStarter? ~ qname ~ "=" ~ expr }
 
 expr = { NL? ~ prefix* ~ NL? ~ primary ~ NL? ~ postfix* ~ NL? ~ (infix ~ NL? ~ prefix* ~ NL? ~ primary ~ NL? ~ postfix* ~ NL?)* }
 
-infix = _{ add | sub | mul | div | modulus | eq | neq | lt | gt | leq | geq | and | or }
+infix = _{ add | sub | mul | div | modulus | pow | eq | neq | lt | gt | leq | geq | and | or }
     add = { "+" }
     sub = { "-" }
     mul = { "*" }
