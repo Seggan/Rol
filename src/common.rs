@@ -1,7 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 
-use crate::error::Error;
+use crate::error::RolError;
 
 pub struct Identifier {
     pub package: Option<String>,
@@ -20,12 +20,18 @@ impl Display for Identifier {
     }
 }
 
+impl Debug for Identifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
 impl FromStr for Identifier {
-    type Err = Error;
+    type Err = RolError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split(PACKAGE_SEP).collect::<Vec<_>>();
-        let name = parts.pop().ok_or(Error::IdentifierParseError(s.to_string()))?;
+        let name = parts.pop().ok_or(RolError::Identifier(s.to_string()))?;
         let package = if parts.is_empty() {
             None
         } else {
