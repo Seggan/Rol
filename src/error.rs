@@ -49,6 +49,7 @@ impl SyntaxError {
 
     fn position(&self) -> Option<Position> {
         match self {
+            Self::InvalidNumber(_, pos) => Some(*pos),
             Self::InvalidUnicodeEscape(_, pos) => Some(*pos),
             Self::UnexpectedChar(pos) => Some(*pos),
             Self::UnexpectedEof => None,

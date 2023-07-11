@@ -17,11 +17,12 @@ pub struct Token {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenType {
     DoubleColon,
-    Equals,
+    DoubleEquals,
     Identifier(String),
     Keyword(Keyword),
     Newline,
     Number(String),
+    SingleChar(SingleChar),
     String(String),
 }
 
@@ -40,6 +41,33 @@ impl Keyword {
             "if" => Some(Keyword::If),
             "val" => Some(Keyword::Val),
             "var" => Some(Keyword::Var),
+            _ => None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum SingleChar {
+    Comma,
+    Equals, // Equals is not in from_char bc special casing for ==
+    Minus,
+    OpenParen,
+    CloseParen,
+    Plus,
+    Slash,
+    Star,
+}
+
+impl SingleChar {
+    fn from_char(c: char) -> Option<SingleChar> {
+        match c {
+            ',' => Some(Self::Comma),
+            '-' => Some(Self::Minus),
+            '(' => Some(Self::OpenParen),
+            ')' => Some(Self::CloseParen),
+            '+' => Some(Self::Plus),
+            '/' => Some(Self::Slash),
+            '*' => Some(Self::Star),
             _ => None
         }
     }
@@ -94,7 +122,17 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
             TokenType::String(lex_string(&mut chars, &mut position)?)
         } else if ('0'..='9').contains(&c) {
             TokenType::Number(lex_number(&mut chars, &mut position, c)?)
-        }  else if c.is_whitespace() {
+        } else if c == '=' {
+            if let Some(&'=') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                TokenType::DoubleEquals
+            } else {
+                TokenType::SingleChar(SingleChar::Equals)
+            }
+        } else if let Some(single) = SingleChar::from_char(c) {
+            TokenType::SingleChar(single)
+        } else if c.is_whitespace() {
             position.column += 1;
             continue;
         } else {
