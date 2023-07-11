@@ -8,8 +8,6 @@ use crate::common::Position;
 
 #[derive(Debug, Error)]
 pub enum RolError {
-    #[error("Failed to parse this identifier: {0}")]
-    Identifier(String),
     #[error("Variable declarations cannot have a package specifier")]
     IllegalPackage,
 }
@@ -25,6 +23,8 @@ impl RolError {
 pub enum SyntaxError {
     #[error("Expected {0}")]
     ExpectedToken(String, Position),
+    #[error("Failed to parse the identifier '{0}' (this shouldn't happen)")]
+    IdentifierParseError(String),
     #[error("Invalid number '{0}'")]
     InvalidNumber(String, Position),
     #[error("Invalid Unicode escape sequence '{0}'")]
@@ -33,6 +33,8 @@ pub enum SyntaxError {
     UnexpectedChar(Position),
     #[error("Unexpected end of file")]
     UnexpectedEof,
+    #[error("Unexpected token")]
+    UnexpectedToken(Position),
 }
 
 impl SyntaxError {
@@ -52,10 +54,12 @@ impl SyntaxError {
     fn position(&self) -> Option<Position> {
         match self {
             Self::ExpectedToken(_, pos) => Some(*pos),
+            Self::IdentifierParseError(_) => None,
             Self::InvalidNumber(_, pos) => Some(*pos),
             Self::InvalidUnicodeEscape(_, pos) => Some(*pos),
             Self::UnexpectedChar(pos) => Some(*pos),
             Self::UnexpectedEof => None,
+            Self::UnexpectedToken(pos) => Some(*pos),
         }
     }
 }

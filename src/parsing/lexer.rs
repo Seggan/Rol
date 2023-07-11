@@ -12,35 +12,36 @@ use crate::error::SyntaxError;
 pub struct Token {
     pub token_type: TokenType,
     pub position: Position,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenType {
     DoubleColon,
     DoubleEquals,
-    Identifier(String),
-    Keyword(Keyword),
+    Identifier,
+    Keyword(RolKeyword),
     Newline,
-    Number(String),
+    Number,
     SingleChar(SingleChar),
     String(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Keyword {
+pub enum RolKeyword {
     Else,
     If,
     Val,
     Var,
 }
 
-impl Keyword {
-    pub fn from_str(s: &str) -> Option<Keyword> {
+impl RolKeyword {
+    pub fn from_str(s: &str) -> Option<RolKeyword> {
         match s {
-            "else" => Some(Keyword::Else),
-            "if" => Some(Keyword::If),
-            "val" => Some(Keyword::Val),
-            "var" => Some(Keyword::Var),
+            "else" => Some(RolKeyword::Else),
+            "if" => Some(RolKeyword::If),
+            "val" => Some(RolKeyword::Val),
+            "var" => Some(RolKeyword::Var),
             _ => None
         }
     }
@@ -91,16 +92,16 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
                     break;
                 }
             }
-            if let Some(keyword) = Keyword::from_str(&ident) {
-                TokenType::Keyword(keyword)
+            if let Some(keyword) = RolKeyword::from_str(&ident) {
+                (TokenType::Keyword(keyword), ident)
             } else {
-                TokenType::Identifier(ident.nfc().collect())
+                (TokenType::Identifier, ident.nfc().collect())
             }
         } else if c == ':' {
             if let Some(&':') = chars.peek() {
                 chars.next();
                 position.column += 1;
-                TokenType::DoubleColon
+                (TokenType::DoubleColon, "::".to_string())
             } else {
                 return Err(SyntaxError::UnexpectedChar(position));
             }
@@ -117,28 +118,29 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
                 }
             }
             position.column = 0;
-            TokenType::Newline
+            (TokenType::Newline, "\n".to_string())
         } else if c == '"' {
-            TokenType::String(lex_string(&mut chars, &mut position)?)
+            let s = lex_string(&mut chars, &mut position)?;
+            (TokenType::String(s.clone()), format!("\"{s}\""))
         } else if ('0'..='9').contains(&c) {
-            TokenType::Number(lex_number(&mut chars, &mut position, c)?)
+            (TokenType::Number, lex_number(&mut chars, &mut position, c)?)
         } else if c == '=' {
             if let Some(&'=') = chars.peek() {
                 chars.next();
                 position.column += 1;
-                TokenType::DoubleEquals
+                (TokenType::DoubleEquals, "==".to_string())
             } else {
-                TokenType::SingleChar(SingleChar::Equals)
+                (TokenType::SingleChar(SingleChar::Equals), "=".to_string())
             }
         } else if let Some(single) = SingleChar::from_char(c) {
-            TokenType::SingleChar(single)
+            (TokenType::SingleChar(single), c.to_string())
         } else if c.is_whitespace() {
             position.column += 1;
             continue;
         } else {
             return Err(SyntaxError::UnexpectedChar(position));
         };
-        tokens.push(Token { token_type: token, position: pos });
+        tokens.push(Token { token_type: token.0, position: pos, text: token.1 });
         position.column += 1;
     }
     Ok(tokens)

@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 
-use crate::error::RolError;
+use crate::error::SyntaxError;
 
 pub struct Identifier {
     pub package: Option<String>,
@@ -25,11 +25,11 @@ impl Debug for Identifier {
 }
 
 impl FromStr for Identifier {
-    type Err = RolError;
+    type Err = SyntaxError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut parts = s.split(Self::PACKAGE_SEP).collect::<Vec<_>>();
-        let name = parts.pop().ok_or(RolError::Identifier(s.to_string()))?;
+        let name = parts.pop().ok_or(Self::Err::IdentifierParseError(s.to_string()))?;
         let package = if parts.is_empty() {
             None
         } else {
