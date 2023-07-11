@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pest = "2.6.0"
-pest_derive = { version = "2.6.0", features = ["grammar-extras"] }
 clap = { version = "4.3.3", features = ["derive"] }
 enumset = "1.1.2"
 thiserror = "1.0.43"
+unicode-normalization = "0.1.22"
+unicode-ident = "1.0.10"
