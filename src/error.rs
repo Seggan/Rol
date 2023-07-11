@@ -23,6 +23,8 @@ impl RolError {
 
 #[derive(Error, Debug)]
 pub enum SyntaxError {
+    #[error("Expected {0}")]
+    ExpectedToken(String, Position),
     #[error("Invalid number '{0}'")]
     InvalidNumber(String, Position),
     #[error("Invalid Unicode escape sequence '{0}'")]
@@ -49,6 +51,7 @@ impl SyntaxError {
 
     fn position(&self) -> Option<Position> {
         match self {
+            Self::ExpectedToken(_, pos) => Some(*pos),
             Self::InvalidNumber(_, pos) => Some(*pos),
             Self::InvalidUnicodeEscape(_, pos) => Some(*pos),
             Self::UnexpectedChar(pos) => Some(*pos),

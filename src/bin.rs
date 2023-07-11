@@ -2,11 +2,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
 
-use crate::parsing::lexer;
-
-mod parsing;
-mod common;
-mod error;
+use rol::parsing::{lexer, parser};
 
 fn main() {
     let args = env::args().collect::<Vec<String>>();
@@ -15,7 +11,10 @@ fn main() {
         let text = read_to_string(file).unwrap();
         let tokens = lexer::lex(&text);
         match tokens {
-            Ok(tokens) => println!("{:?}", tokens.into_iter().map(|t| t.token_type).collect::<Vec<_>>()),
+            Ok(tokens) => println!("{:?}", match parser::parse(tokens) {
+                Ok(toks) => toks,
+                Err(error) => error.report(file, &text)
+            }),
             Err(error) => error.report(file, &text)
         }
     } else {

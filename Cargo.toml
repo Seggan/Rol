@@ -3,6 +3,14 @@ name = "rol"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "rol"
+path = "src/lib.rs"
+
+[[bin]]
+name = "compiler"
+path = "src/bin.rs"
+
 [dependencies]
 clap = { version = "4.3.3", features = ["derive"] }
 enumset = "1.1.2"
