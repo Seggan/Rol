@@ -1,8 +1,9 @@
 use enumset::{enum_set, EnumSet};
 
-use crate::{error::SyntaxError, try_consume, parsing::ast::Modifier};
+use crate::{error::SyntaxError, try_consume, parsing::ast::Modifier, match_next};
 
-use super::{lexer::{Token, TokenType::*, RolKeyword::*, SingleChar::*}, ast::AstNode};
+use super::lexer::{Token, TokenType::*, RolKeyword::*, SingleChar::*}
+use super::ast::{AstNode, Expr, BinOp, PrefixOp, PostfixOp, Literal};
 
 struct TokenStream {
     tokens: Vec<Token>,
@@ -88,10 +89,33 @@ fn parse_var_decl(tokens: &mut TokenStream) -> Result<AstNode<()>, SyntaxError> 
         unreachable!()
     };
     let modifiers = if keyword == Val {enum_set!{Modifier::Final}} else {enum_set!{}};
+
+    ignore_newlines(tokens);
     let name = try_consume!(tokens, Identifier, "an identifier").text.clone();
+    ignore_newlines(tokens);
     try_consume!(tokens, SingleChar(Equals), "'='");
     Ok(AstNode::VarDecl(modifiers, name.parse()?, ()))
 }
+
+fn parse_expr(tokens: &mut TokenStream) -> Result<Expr<()>, SyntaxError> {
+    let mut left = parse_and(tokens)?;
+    while match_next!(tokens, Or).is_some() {
+        let right = parse_and(tokens)?;
+        left = Expr::BinOp(left.into(), BinOp::Or, right.into(), ());
+    }
+    Ok(left)
+}
+
+fn parse_and(tokens: &mut TokenStream) -> Result<Expr<()>, SyntaxError> {
+    let mut left = parse_equality(tokens)?;
+    while match_next!(tokens, And).is_some() {
+        let right = parse_equality(tokens)?;
+        left = Expr::BinOp(left.into(), BinOp::And, right.into(), ());
+    }
+    Ok(left)
+}
+
+
 
 fn parse_maybe(
     tokens: &mut TokenStream, 
@@ -104,5 +128,15 @@ fn parse_maybe(
     } else {
         tokens.restore_pos();
         None
+    }
+}
+
+fn ignore_newlines(tokens: &mut TokenStream) {
+    while let Some(next) = tokens.peek(1) {
+        if next.token_type == Newline {
+            tokens.next();
+        } else {
+            break;
+        }
     }
 }

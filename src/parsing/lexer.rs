@@ -17,12 +17,14 @@ pub struct Token {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenType {
+    And,
     DoubleColon,
     DoubleEquals,
     Identifier,
     Keyword(RolKeyword),
     Newline,
     Number,
+    Or,
     SingleChar(SingleChar),
     String(String),
 }
@@ -102,6 +104,22 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
                 chars.next();
                 position.column += 1;
                 (TokenType::DoubleColon, "::".to_string())
+            } else {
+                return Err(SyntaxError::UnexpectedChar(position));
+            }
+        } else if c == '|' {
+            if let Some(&'|') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                (TokenType::Or, "||".to_string())
+            } else {
+                return Err(SyntaxError::UnexpectedChar(position));
+            }
+        } else if c == '&' {
+            if let Some(&'&') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                (TokenType::And, "&&".to_string())
             } else {
                 return Err(SyntaxError::UnexpectedChar(position));
             }

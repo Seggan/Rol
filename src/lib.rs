@@ -18,3 +18,19 @@ macro_rules! try_consume {
         }
     };
 }
+
+#[macro_export]
+macro_rules! match_next {
+    ($toks:expr, $tok:pat) => {
+        if let Some(next) = $toks.next() {
+            if let $tok = next.token_type {
+                Some(next)
+            } else {
+                $toks.previous();
+                None
+            }
+        } else {
+            return Result::Err($crate::error::SyntaxError::UnexpectedEof);
+        }
+    };
+}

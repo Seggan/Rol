@@ -18,7 +18,16 @@ pub enum BinOp {
     Times,
     Divide,
     Mod,
-    Pow
+    Pow,
+
+    Equals,
+    NotEquals,
+    And,
+    Or,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual
 }
 
 #[derive(Debug)]
