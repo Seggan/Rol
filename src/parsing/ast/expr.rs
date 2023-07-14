@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 
 use crate::common::Identifier;
 
@@ -11,14 +11,26 @@ pub enum Expr<E: Debug> {
     Literal(Literal, E),
 }
 
+impl<T: Debug> Display for Expr<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::BinOp(lhs, op, rhs, _) => write!(f, "({} {:?} {})", lhs, op, rhs),
+            Expr::PrefixOp(op, expr, _) => write!(f, "({:?}{})", op, expr),
+            Expr::PostfixOp(expr, op, _) => write!(f, "({}{})", expr, op),
+            Expr::VarAccess(name, _) => write!(f, "{}", name),
+            Expr::Literal(lit, _) => write!(f, "{}", lit),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum BinOp {
     Plus,
     Minus,
     Times,
     Divide,
-    Mod,
-    Pow,
+    Modulo,
+    Power,
 
     Equals,
     NotEquals,
@@ -32,7 +44,7 @@ pub enum BinOp {
 
 #[derive(Debug)]
 pub enum PrefixOp {
-    Neg,
+    Negate,
     Not
 }
 
@@ -43,11 +55,36 @@ pub enum PostfixOp<E: Debug> {
     AssertNotNull
 }
 
+impl<E: Debug> Display for PostfixOp<E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PostfixOp::FunctionCall(args) => {
+                let args = args.iter().map(|a| format!("{}", a)).collect::<Vec<_>>().join(", ");
+                write!(f, "({})", args)
+            },
+            PostfixOp::Index(expr) => write!(f, "[{}]", expr),
+            PostfixOp::AssertNotNull => write!(f, "!"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Literal {
     Int(i64),
-    Float(f64),
+    Float(String),
     String(String),
     Bool(bool),
     Null
+}
+
+impl Display for Literal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Literal::Int(i) => write!(f, "{}", i),
+            Literal::Float(s) => write!(f, "{}", s),
+            Literal::String(s) => write!(f, "\"{}\"", s),
+            Literal::Bool(b) => write!(f, "{}", b),
+            Literal::Null => write!(f, "null"),
+        }
+    }
 }

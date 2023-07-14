@@ -5,14 +5,13 @@ use std::str::Chars;
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unicode_normalization::UnicodeNormalization;
 
-use crate::common::Position;
+use crate::common::{Position, Span};
 use crate::error::SyntaxError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub token_type: TokenType,
-    pub position: Position,
-    pub text: String,
+    pub span: Span
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,12 +19,16 @@ pub enum TokenType {
     And,
     DoubleColon,
     DoubleEquals,
+    GreaterThanEquals,
     Identifier,
     Keyword(RolKeyword),
+    LessThanEquals,
     Newline,
+    NotEquals,
     Number,
     Or,
     SingleChar(SingleChar),
+    DoubleStar,
     String(String),
 }
 
@@ -52,10 +55,14 @@ impl RolKeyword {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SingleChar {
     Comma,
-    Equals, // Equals is not in from_char bc special casing for ==
+    Equals,
+    GreaterThan,
+    LessThan,
     Minus,
+    Not,
     OpenParen,
     CloseParen,
+    Percent,
     Plus,
     Slash,
     Star,
@@ -65,12 +72,15 @@ impl SingleChar {
     fn from_char(c: char) -> Option<SingleChar> {
         match c {
             ',' => Some(Self::Comma),
+            '>' => Some(Self::GreaterThan),
+            '<' => Some(Self::LessThan),
             '-' => Some(Self::Minus),
+            '!' => Some(Self::Not),
             '(' => Some(Self::OpenParen),
             ')' => Some(Self::CloseParen),
             '+' => Some(Self::Plus),
+            '%' => Some(Self::Percent),
             '/' => Some(Self::Slash),
-            '*' => Some(Self::Star),
             _ => None
         }
     }
@@ -150,6 +160,38 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
             } else {
                 (TokenType::SingleChar(SingleChar::Equals), "=".to_string())
             }
+        } else if c == '<' {
+            if let Some(&'=') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                (TokenType::LessThanEquals, "<=".to_string())
+            } else {
+                (TokenType::SingleChar(SingleChar::LessThan), "<".to_string())
+            }
+        } else if c == '>' {
+            if let Some(&'=') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                (TokenType::GreaterThanEquals, ">=".to_string())
+            } else {
+                (TokenType::SingleChar(SingleChar::GreaterThan), ">".to_string())
+            }
+        } else if c == '*' {
+            if let Some(&'*') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                (TokenType::DoubleStar, "**".to_string())
+            } else {
+                (TokenType::SingleChar(SingleChar::Star), "*".to_string())
+            }
+        } else if c == '!' {
+            if let Some(&'=') = chars.peek() {
+                chars.next();
+                position.column += 1;
+                (TokenType::NotEquals, "!=".to_string())
+            } else {
+                (TokenType::SingleChar(SingleChar::Not), "!".to_string())
+            }
         } else if let Some(single) = SingleChar::from_char(c) {
             (TokenType::SingleChar(single), c.to_string())
         } else if c.is_whitespace() {
@@ -158,7 +200,7 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
         } else {
             return Err(SyntaxError::UnexpectedChar(position));
         };
-        tokens.push(Token { token_type: token.0, position: pos, text: token.1 });
+        tokens.push(Token { token_type: token.0, span: pos.to_span(&token.1) });
         position.column += 1;
     }
     Ok(tokens)
@@ -194,10 +236,12 @@ fn lex_string(chars: &mut Peekable<Chars>, position: &mut Position) -> Result<St
                             if let Some(c) = char::from_u32(codepoint) {
                                 string.push(c);
                             } else {
-                                return Err(SyntaxError::InvalidUnicodeEscape(unicode, *position));
+                                let span = position.to_span(&unicode);
+                                return Err(SyntaxError::InvalidUnicodeEscape(unicode, span));
                             }
                         } else {
-                            return Err(SyntaxError::InvalidUnicodeEscape(unicode, *position));
+                            let span = position.to_span(&unicode);
+                            return Err(SyntaxError::InvalidUnicodeEscape(unicode, span));
                         }
                     }
                     Some(c) => {
@@ -237,6 +281,7 @@ fn lex_number(chars: &mut Peekable<Chars>, position: &mut Position, first: char)
     if let Ok(_) = number.parse::<f64>() {
         Ok(number)
     } else {
-        Err(SyntaxError::InvalidNumber(number, pos))
+        let span = pos.to_span(&number);
+        Err(SyntaxError::InvalidNumber(number, span))
     }
 }
