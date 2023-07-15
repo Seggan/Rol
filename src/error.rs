@@ -4,7 +4,7 @@ use std::process::exit;
 
 use thiserror::Error;
 
-use crate::common::{Position, SourceLocation, Span};
+use crate::parsing::location::Span;
 
 #[derive(Error, Debug)]
 pub enum RolError {
@@ -41,9 +41,9 @@ impl From<SyntaxError> for RolError {
 #[derive(Error, Debug)]
 pub enum SyntaxError {
     #[error("Expected a new line")]
-    ExpectedNewline(Position),
+    ExpectedNewline(Span),
     #[error("Expected {0}")]
-    ExpectedToken(String, Position),
+    ExpectedToken(String, Span),
     #[error("Failed to parse the identifier '{0}' (this shouldn't happen)")]
     IdentifierParseError(String),
     #[error("Invalid number '{0}'")]
@@ -51,7 +51,7 @@ pub enum SyntaxError {
     #[error("Invalid Unicode escape sequence '{0}'")]
     InvalidUnicodeEscape(String, Span),
     #[error("Unexpected character")]
-    UnexpectedChar(Position),
+    UnexpectedChar(Span),
     #[error("Unexpected end of file")]
     UnexpectedEof,
     #[error("Unexpected token")]
@@ -59,7 +59,7 @@ pub enum SyntaxError {
 }
 
 impl SyntaxError {
-    fn location(&self) -> Option<&dyn SourceLocation> {
+    fn location(&self) -> Option<&Span> {
         match self {
             Self::ExpectedNewline(pos) => Some(pos),
             Self::ExpectedToken(_, pos) => Some(pos),
@@ -76,9 +76,9 @@ impl SyntaxError {
         let pos = self.location();
         eprintln!("Syntax error: {}", self);
         if let Some(pos) = pos {
-            eprintln!("  --> {}:{}:{}", file.to_string_lossy(), pos.line(), pos.column());
+            eprintln!("  --> {}:{}:{}", file.to_string_lossy(), pos.start.line, pos.start.column);
             if let Some(caret) = pos.caret() {
-                eprintln!("   | {}", content.lines().nth(pos.line() - 1).unwrap());
+                eprintln!("   | {}", content.lines().nth(pos.start.line - 1).unwrap());
                 eprintln!("   | {}", caret);
             }
         } else {

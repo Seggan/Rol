@@ -4,6 +4,7 @@ use crate::{consumes_end, match_next, try_consume};
 use crate::error::RolError;
 use crate::error::SyntaxError;
 use crate::parsing::ast::{Literal, Modifier, PostfixOp, PrefixOp};
+use crate::parsing::location::Span;
 
 use super::ast::{AstNode, BinOp, Expr};
 use super::lexer::{RolKeyword::*, SingleChar::*, Token, TokenType::*};
@@ -39,7 +40,10 @@ impl TokenStream {
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Result<AstNode<()>, RolError> {
+type NodeResult = Result<AstNode<Span>, RolError>;
+type ExprResult = Result<Expr<Span>, RolError>;
+
+pub fn parse(tokens: Vec<Token>) -> NodeResult {
     let mut tokens = TokenStream::new(tokens);
     let mut statements = Vec::new();
     let mut errors = Vec::new();
@@ -68,21 +72,21 @@ pub fn parse(tokens: Vec<Token>) -> Result<AstNode<()>, RolError> {
         }
     }
     consumes_end!(errors);
-    Ok(AstNode::Statements(statements, ()))
+    Ok(AstNode::Statements(statements, todo!()))
 }
 
-fn parse_statement(tokens: &mut TokenStream) -> Result<AstNode<()>, RolError> {
+fn parse_statement(tokens: &mut TokenStream) -> NodeResult {
     let stmt = parse_var_decl(tokens)?;
     if let Some(token) = tokens.next() {
         if token.token_type != Newline {
-            let pos = token.span.start;
+            let pos = token.span.clone();
             return Err(SyntaxError::ExpectedNewline(pos).into())
         }
     }
     Ok(stmt)
 }
 
-fn parse_var_decl(tokens: &mut TokenStream) -> Result<AstNode<()>, RolError> {
+fn parse_var_decl(tokens: &mut TokenStream) -> NodeResult {
     let mut errors = Vec::new();
     try_consume!(tokens, errors, Keyword(Val) | Keyword(Var), "'val' or 'var'");
     let keyword = if let Some(token) = tokens.current() {
@@ -97,36 +101,36 @@ fn parse_var_decl(tokens: &mut TokenStream) -> Result<AstNode<()>, RolError> {
     let modifiers = if keyword == Val {enum_set!{Modifier::Final}} else {enum_set!{}};
 
     ignore_newlines(tokens);
-    let name: crate::common::Identifier = try_consume!(tokens, Identifier, "an identifier").span.text.clone().parse()?;
+    let name: super::common::Identifier = try_consume!(tokens, Identifier, "an identifier").text.clone().parse()?;
     ignore_newlines(tokens);
     try_consume!(tokens, errors, SingleChar(Equals), "'='");
     ignore_newlines(tokens);
     let expr = consumes_end!(errors, parse_expr(tokens));
     Ok(AstNode::Statements(vec![
-        AstNode::VarDecl(modifiers, name.clone(), ()),
-        AstNode::VarAssign(name, expr, ())
-    ], ()))
+        AstNode::VarDecl(modifiers, name.clone(), todo!()),
+        AstNode::VarAssign(name, expr, todo!())
+    ], todo!()))
 }
 
-fn parse_expr(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_expr(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_and(tokens)?;
     while match_next!(tokens, Or).is_some() {
         let right = parse_and(tokens)?;
-        left = Expr::BinOp(left.into(), BinOp::Or, right.into(), ());
+        left = Expr::BinOp(left.into(), BinOp::Or, right.into(), todo!());
     }
     Ok(left)
 }
 
-fn parse_and(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_and(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_equality(tokens)?;
     while match_next!(tokens, And).is_some() {
         let right = parse_equality(tokens)?;
-        left = Expr::BinOp(left.into(), BinOp::And, right.into(), ());
+        left = Expr::BinOp(left.into(), BinOp::And, right.into(), todo!());
     }
     Ok(left)
 }
 
-fn parse_equality(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_equality(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_comparison(tokens)?;
     while let Some(token) = match_next!(tokens, DoubleEquals | NotEquals) {
         let right = parse_comparison(tokens)?;
@@ -138,13 +142,13 @@ fn parse_equality(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
                 _ => unreachable!()
             },
             right.into(),
-            ()
+            todo!()
         );
     }
     Ok(left)
 }
 
-fn parse_comparison(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_comparison(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_term(tokens)?;
     while let Some(token) = match_next!(tokens, SingleChar(LessThan) | LessThanEquals | SingleChar(GreaterThan) | GreaterThanEquals) {
         let right = parse_term(tokens)?;
@@ -158,13 +162,13 @@ fn parse_comparison(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
                 _ => unreachable!()
             },
             right.into(),
-            ()
+            todo!()
         );
     }
     Ok(left)
 }
 
-fn parse_term(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_term(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_factor(tokens)?;
     while let Some(token) = match_next!(tokens, SingleChar(Plus) | SingleChar(Minus)) {
         let right = parse_factor(tokens)?;
@@ -176,13 +180,13 @@ fn parse_term(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
                 _ => unreachable!()
             },
             right.into(),
-            ()
+            todo!()
         );
     }
     Ok(left)
 }
 
-fn parse_factor(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_factor(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_unary(tokens)?;
     while let Some(token) = match_next!(tokens, SingleChar(Star) | SingleChar(Slash) | SingleChar(Percent)) {
         let right = parse_unary(tokens)?;
@@ -195,13 +199,13 @@ fn parse_factor(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
                 _ => unreachable!()
             },
             right.into(),
-            ()
+            todo!()
         );
     }
     Ok(left)
 }
 
-fn parse_unary(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_unary(tokens: &mut TokenStream) -> ExprResult {
     if let Some(token) = match_next!(tokens, SingleChar(Minus) | SingleChar(Not)) {
         let right = parse_unary(tokens)?;
         Ok(Expr::PrefixOp(
@@ -211,25 +215,26 @@ fn parse_unary(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
                 _ => unreachable!()
             },
             right.into(),
-            ()
+            todo!()
         ))
     } else {
         parse_power(tokens)
     }
 }
 
-fn parse_power(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_power(tokens: &mut TokenStream) -> ExprResult {
     let mut left = parse_postfix(tokens)?;
     if match_next!(tokens, DoubleStar).is_some() {
         let right = parse_power(tokens)?;
-        left = Expr::BinOp(left.into(), BinOp::Power, right.into(), ());
+        left = Expr::BinOp(left.into(), BinOp::Power, right.into(), todo!());
     }
     Ok(left)
 }
 
-fn parse_postfix(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_postfix(tokens: &mut TokenStream) -> ExprResult {
     let mut errors = Vec::new();
     let mut left = parse_primary(tokens)?;
+    let start_pos = left.extra_data().start;
     while match_next!(tokens, SingleChar(OpenParen)).is_some() {
         let mut args = Vec::new();
         if match_next!(tokens, SingleChar(CloseParen)).is_none() {
@@ -241,18 +246,23 @@ fn parse_postfix(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
                 try_consume!(tokens, errors, SingleChar(Comma), "','");
             }
         }
-        left = Expr::PostfixOp(left.into(), PostfixOp::FunctionCall(args), ());
+        left = Expr::PostfixOp(
+            left.into(),
+            PostfixOp::FunctionCall(args),
+            todo!()
+        );
     }
     consumes_end!(errors);
     Ok(left)
 }
 
-fn parse_primary(tokens: &mut TokenStream) -> Result<Expr<()>, RolError> {
+fn parse_primary(tokens: &mut TokenStream) -> ExprResult {
     if let Some(token) = tokens.next() {
+        let span = token.span.clone();
         match token.token_type {
-            Identifier => Ok(Expr::VarAccess(token.span.text.parse()?, ())),
-            Number => Ok(Expr::Literal(Literal::Float(token.span.text.clone()), ())),
-            _ => Err(SyntaxError::UnexpectedToken(token.span.clone()).into())
+            Identifier => Ok(Expr::VarAccess(token.text.parse()?, span)),
+            Number => Ok(Expr::Literal(Literal::Float(token.text.clone()), span)),
+            _ => Err(SyntaxError::UnexpectedToken(span).into())
         }
     } else {
         Err(SyntaxError::UnexpectedEof.into())

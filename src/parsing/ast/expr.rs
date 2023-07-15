@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::common::Identifier;
+use crate::parsing::common::Identifier;
 
 #[derive(Debug)]
 pub enum Expr<E: Debug> {
@@ -19,6 +19,18 @@ impl<T: Debug> Display for Expr<T> {
             Expr::PostfixOp(expr, op, _) => write!(f, "({}{})", expr, op),
             Expr::VarAccess(name, _) => write!(f, "{}", name),
             Expr::Literal(lit, _) => write!(f, "{}", lit),
+        }
+    }
+}
+
+impl<T: Debug> Expr<T> {
+    pub fn extra_data(&self) -> &T {
+        match self {
+            Expr::BinOp(_, _, _, data) => data,
+            Expr::PrefixOp(_, _, data) => data,
+            Expr::PostfixOp(_, _, data) => data,
+            Expr::VarAccess(_, data) => data,
+            Expr::Literal(_, data) => data,
         }
     }
 }

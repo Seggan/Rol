@@ -9,7 +9,7 @@ fn main() {
     if let Some(file) = args.get(1) {
         let file = Path::new(file);
         let text = read_to_string(file).unwrap();
-        process_file(file, &text).unwrap_or_else(|e| e.report_and_exit(file, &text));
+        process_file(&text).unwrap_or_else(|e| e.report_and_exit(file, &text));
     } else {
         eprintln!("No input file")
     }

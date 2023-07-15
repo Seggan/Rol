@@ -5,13 +5,14 @@ use std::str::Chars;
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unicode_normalization::UnicodeNormalization;
 
-use crate::common::{Position, Span};
 use crate::error::SyntaxError;
+use crate::parsing::location::{Position, Span};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub token_type: TokenType,
-    pub span: Span
+    pub span: Span,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,7 +116,7 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
                 position.column += 1;
                 (TokenType::DoubleColon, "::".to_string())
             } else {
-                return Err(SyntaxError::UnexpectedChar(position));
+                return Err(SyntaxError::UnexpectedChar(position.to_span("")));
             }
         } else if c == '|' {
             if let Some(&'|') = chars.peek() {
@@ -123,7 +124,7 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
                 position.column += 1;
                 (TokenType::Or, "||".to_string())
             } else {
-                return Err(SyntaxError::UnexpectedChar(position));
+                return Err(SyntaxError::UnexpectedChar(position.to_span("")));
             }
         } else if c == '&' {
             if let Some(&'&') = chars.peek() {
@@ -131,7 +132,7 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
                 position.column += 1;
                 (TokenType::And, "&&".to_string())
             } else {
-                return Err(SyntaxError::UnexpectedChar(position));
+                return Err(SyntaxError::UnexpectedChar(position.to_span("")));
             }
         } else if c == '\r' || c == '\n' {
             position.line += 1;
@@ -198,9 +199,9 @@ pub fn lex(code: &str) -> Result<Vec<Token>, SyntaxError> {
             position.column += 1;
             continue;
         } else {
-            return Err(SyntaxError::UnexpectedChar(position));
+            return Err(SyntaxError::UnexpectedChar(position.to_span("")));
         };
-        tokens.push(Token { token_type: token.0, span: pos.to_span(&token.1) });
+        tokens.push(Token { token_type: token.0, span: pos.to_span(&token.1), text: token.1 });
         position.column += 1;
     }
     Ok(tokens)

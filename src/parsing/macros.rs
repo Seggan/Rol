@@ -29,7 +29,7 @@ macro_rules! try_consume {
             match next.token_type {
                 $tok => next.clone(),
                 _ => {
-                    let span = next.span.start;
+                    let span = next.span.clone();
                     return Result::Err($crate::error::SyntaxError::ExpectedToken(
                         $err.to_string(),
                         span
@@ -46,7 +46,7 @@ macro_rules! try_consume {
             match next.token_type {
                 $tok => {},
                 _ => {
-                    let span = next.span.start;
+                    let span = next.span.clone();
                     $errors.push($crate::error::SyntaxError::ExpectedToken(
                         $err.to_string(),
                         span
