@@ -74,3 +74,30 @@ macro_rules! match_next {
         }
     };
 }
+
+#[macro_export]
+macro_rules! binop {
+    ($toks:expr, $raw:expr, $next:expr, $ftok:pat => $fop:expr $(, $tok:pat => $op:expr )*) => {{
+        let mut left = $next($toks, $raw.clone())?;
+        while let Option::Some(token) = match_next!($toks, $ftok $( | $tok )*) {
+            let right = $next($toks, $raw.clone())?;
+            let op_type = match token.token_type {
+                $ftok => $fop,
+                $( $tok => $op, )*
+                _ => unreachable!()
+            };
+            let tok_span = $crate::parsing::location::TokenSpan::new(
+                left.extra_data().start,
+                right.extra_data().end,
+                $raw.clone()
+            );
+            left = $crate::parsing::ast::Expr::BinOp(
+                Box::new(left),
+                op_type,
+                Box::new(right),
+                tok_span
+            );
+        }
+        Result::Ok(left)
+    }};
+}

@@ -1,13 +1,19 @@
+use std::cmp::{max, min};
 use std::fmt::{Display, Formatter};
 use std::ops::Add;
+use std::rc::Rc;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use crate::parsing::lexer::Token;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
 }
 
 impl Position {
+    pub const NONE: Position = Position { line: 0, column: 0 };
+
     pub fn to_span(&self, text: &str) -> Span {
         Span::from_pos(*self, text)
     }
@@ -44,6 +50,16 @@ impl Add<Position> for Position {
     }
 }
 
+impl PartialOrd for Position {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        if self.line == other.line {
+            self.column.partial_cmp(&other.column)
+        } else {
+            self.line.partial_cmp(&other.line)
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {
     pub start: Position,
@@ -57,6 +73,11 @@ impl Display for Span {
 }
 
 impl Span {
+    pub const NONE: Span = Span {
+        start: Position::NONE,
+        end: Position::NONE,
+    };
+
     pub fn new(start: Position, end: Position) -> Self {
         Self { start, end }
     }
@@ -101,6 +122,43 @@ impl Span {
 
     pub fn text<'a>(&self, text: &'a str) -> &'a str {
         &text[self.start.location_in(text)..=self.end.location_in(text)]
+    }
+
+    pub fn merge(&self, other: &Self) -> Self {
+        Self {
+            start: min(self.start, other.start),
+            end: max(self.end, other.end),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenSpan {
+    pub start: usize,
+    pub end: usize,
+    tokens: Rc<Vec<Token>>
+}
+
+impl TokenSpan {
+
+    pub fn new(start: usize, end: usize, tokens: Rc<Vec<Token>>) -> Self {
+        Self { start, end, tokens }
+    }
+
+    pub fn none() -> Self {
+        Self { start: 0, end: 0, tokens: Rc::new(Vec::new()) }
+    }
+
+    pub fn tokens(&self) -> &[Token] {
+        &self.tokens[self.start..=self.end]
+    }
+
+    pub fn merge(&self, other: &Self) -> Self {
+        Self {
+            start: min(self.start, other.start),
+            end: max(self.end, other.end),
+            tokens: self.tokens.clone()
+        }
     }
 }
 

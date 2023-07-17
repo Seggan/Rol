@@ -14,6 +14,17 @@ pub enum AstNode<E: Debug> {
     Expr(Expr<E>),
 }
 
+impl<E: Debug> AstNode<E> {
+    pub fn extra_data(&self) -> &E {
+        match self {
+            AstNode::Statements(_, e) => e,
+            AstNode::VarDecl(_, _, e) => e,
+            AstNode::VarAssign(_, _, e) => e,
+            AstNode::Expr(e) => e.extra_data(),
+        }
+    }
+}
+
 impl<T: Debug> Display for AstNode<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
